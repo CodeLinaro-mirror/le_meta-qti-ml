@@ -18,6 +18,8 @@ DEPENDS += "liblog"
 DEPENDS += "libutils"
 DEPENDS += "tensorflow-lite"
 DEPENDS += "gtest"
+DEPENDS += "libfmq"
+DEPENDS += "openssl"
 
 FILESPATH =+ "${WORKSPACE}/frameworks/ml/:"
 SRC_URI = "file://nn"
