@@ -1,0 +1,348 @@
+From 71c4d2c446db49aa01ae66d67509f8aa4224ba1d Mon Sep 17 00:00:00 2001
+From: "Petar G. Georgiev" <petarg@codeaurora.org>
+Date: Mon, 3 Jun 2019 18:13:59 +0300
+Subject: [CHANGE 3/3] label_image: Enchance input parser and output
+ capabilities
+
+- Add support for reading raw RGB image or blob data.
+- Additional option for setting dimensions for inputs
+  that are wither raw RGB or blob data.
+- Add option for saving output tensors to file.
+
+Change-Id: I89cc4ab2d46472336f1f782c929e6df08335d938
+---
+ .../lite/examples/label_image/bitmap_helpers.cc    | 77 ++++++++++++++++++---
+ .../lite/examples/label_image/bitmap_helpers.h     | 10 ++-
+ .../lite/examples/label_image/label_image.cc       | 78 +++++++++++++++++++---
+ tensorflow/lite/examples/label_image/label_image.h |  6 +-
+ 4 files changed, 148 insertions(+), 23 deletions(-)
+
+diff --git a/tensorflow/lite/examples/label_image/bitmap_helpers.cc b/tensorflow/lite/examples/label_image/bitmap_helpers.cc
+index 0adad68..d732884 100644
+--- a/tensorflow/lite/examples/label_image/bitmap_helpers.cc
++++ b/tensorflow/lite/examples/label_image/bitmap_helpers.cc
+@@ -70,26 +70,27 @@ std::vector<uint8_t> decode_bmp(const uint8_t* input, int row_size, int width,
+   return output;
+ }
+ 
+-std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
+-                              int* height, int* channels, Settings* s) {
++std::vector<uint8_t> read_bmp(const std::string& input, int* width,
++                              int* height, int* channels) {
+   int begin, end;
+ 
+-  std::ifstream file(input_bmp_name, std::ios::in | std::ios::binary);
++  std::ifstream file(input, std::ios::in | std::ios::binary);
+   if (!file) {
+-    LOG(FATAL) << "input file " << input_bmp_name << " not found\n";
++    LOG(FATAL) << "input file " << input << " not found\n";
+     exit(-1);
+   }
++  LOG(INFO) << "Input file: " << input << "\n";
+ 
+   begin = file.tellg();
+   file.seekg(0, std::ios::end);
+   end = file.tellg();
+-  size_t len = end - begin;
++  size_t size = end - begin;
+ 
+-  if (s->verbose) LOG(INFO) << "len: " << len << "\n";
++  LOG(INFO) << "Input file size: " << size << "\n";
+ 
+-  std::vector<uint8_t> img_bytes(len);
++  std::vector<uint8_t> img_bytes(size);
+   file.seekg(0, std::ios::beg);
+-  file.read(reinterpret_cast<char*>(img_bytes.data()), len);
++  file.read(reinterpret_cast<char*>(img_bytes.data()), size);
+   const int32_t header_size =
+       *(reinterpret_cast<const int32_t*>(img_bytes.data() + 10));
+   *width = *(reinterpret_cast<const int32_t*>(img_bytes.data() + 18));
+@@ -98,9 +99,8 @@ std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
+       *(reinterpret_cast<const int32_t*>(img_bytes.data() + 28));
+   *channels = bpp / 8;
+ 
+-  if (s->verbose)
+-    LOG(INFO) << "width, height, channels: " << *width << ", " << *height
+-              << ", " << *channels << "\n";
++  LOG(INFO) << "Input file width, height, channels: " << *width
++            << ", " << *height << ", " << *channels << "\n";
+ 
+   // there may be padding bytes when the width is not a multiple of 4 bytes
+   // 8 * channels == bits per pixel
+@@ -116,5 +116,60 @@ std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
+                     top_down);
+ }
+ 
++std::vector<uint8_t> read_rgb(const std::string& input, int width,
++                              int height, int channels) {
++
++  std::ifstream file(input, std::ios::ate | std::ios::binary);
++  if (!file) {
++    LOG(FATAL) << "input file " << input << " not found\n";
++    exit(-1);
++  }
++  LOG(INFO) << "Input file: " << input << "\n";
++
++  auto size = file.tellg();
++  file.seekg(0);
++
++  LOG(INFO) << "Input file size: " << size << "\n";
++
++  LOG(INFO) << "Input file width, height, channels: " << width
++            << ", " << height << ", " << channels << "\n";
++
++  std::vector<uint8_t> in(height * width * channels);
++  if (!file.read(reinterpret_cast<char*>(in.data()), in.size())) {
++    LOG(FATAL) << "input file read failed\n";
++    exit(-1);
++  }
++
++  const int row_size = width * channels;
++  return decode_bmp(in.data(), row_size, width, height, channels, false);
++}
++
++std::vector<uint8_t> read_blob(const std::string& input, int width,
++                               int height, int channels) {
++
++  std::ifstream file(input, std::ios::ate | std::ios::binary);
++  if (!file) {
++    LOG(FATAL) << "input file " << input << " not found\n";
++    exit(-1);
++  }
++  LOG(INFO) << "Input file: " << input << "\n";
++
++  auto size = file.tellg();
++  file.seekg(0);
++
++  LOG(INFO) << "Input file size: " << size << "\n";
++
++  LOG(INFO) << "Input file width, height, channels: " << width
++            << ", " << height << ", " << channels << "\n";
++
++  std::vector<uint8_t> output(height * width * channels);
++  if (!file.read(reinterpret_cast<char*>(output.data()), output.size())) {
++    LOG(FATAL) << "input file read failed\n";
++    exit(-1);
++  }
++
++  return output;
++}
++
+ }  // namespace label_image
+ }  // namespace tflite
+diff --git a/tensorflow/lite/examples/label_image/bitmap_helpers.h b/tensorflow/lite/examples/label_image/bitmap_helpers.h
+index 0520996..009606c 100644
+--- a/tensorflow/lite/examples/label_image/bitmap_helpers.h
++++ b/tensorflow/lite/examples/label_image/bitmap_helpers.h
+@@ -22,8 +22,14 @@ limitations under the License.
+ namespace tflite {
+ namespace label_image {
+ 
+-std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
+-                              int* height, int* channels, Settings* s);
++std::vector<uint8_t> read_bmp(const std::string& input, int* width,
++                              int* height, int* channels);
++
++std::vector<uint8_t> read_rgb(const std::string& input, int width,
++                              int height, int channels);
++
++std::vector<uint8_t> read_blob(const std::string& input, int width,
++                               int height, int channels);
+ 
+ template <class T>
+ void resize(T* out, uint8_t* in, int image_height, int image_width,
+diff --git a/tensorflow/lite/examples/label_image/label_image.cc b/tensorflow/lite/examples/label_image/label_image.cc
+index 02ca9f3..a7fa1a3 100644
+--- a/tensorflow/lite/examples/label_image/label_image.cc
++++ b/tensorflow/lite/examples/label_image/label_image.cc
+@@ -23,6 +23,7 @@ limitations under the License.
+ #include <cstdarg>
+ #include <cstdio>
+ #include <cstdlib>
++#include <cstring>
+ #include <fstream>
+ #include <iomanip>
+ #include <iostream>
+@@ -152,11 +153,20 @@ void RunInference(Settings* s) {
+     interpreter->SetNumThreads(s->number_of_threads);
+   }
+ 
+-  int image_width = 224;
+-  int image_height = 224;
+-  int image_channels = 3;
+-  std::vector<uint8_t> in = read_bmp(s->input_bmp_name, &image_width,
+-                                     &image_height, &image_channels, s);
++  int width = s->width;
++  int height = s->height;
++  int channels = s->channels;
++
++  std::vector<uint8_t> in;
++  size_t position = s->input_name.size() - 4;
++
++  if (s->input_name.compare(position, 4, ".bmp") == 0) {
++    in = read_bmp(s->input_name, &width, &height, &channels);
++  } else if (s->input_name.compare(position, 4, ".rgb") == 0) {
++    in = read_rgb(s->input_name, width, height, channels);
++  } else {
++    in = read_blob(s->input_name, width, height, channels);
++  }
+ 
+   int input = interpreter->inputs()[0];
+   if (s->verbose) LOG(INFO) << "input: " << input << "\n";
+@@ -186,12 +196,12 @@ void RunInference(Settings* s) {
+     case kTfLiteFloat32:
+       s->input_floating = true;
+       resize<float>(interpreter->typed_tensor<float>(input), in.data(),
+-                    image_height, image_width, image_channels, wanted_height,
++                    height, width, channels, wanted_height,
+                     wanted_width, wanted_channels, s);
+       break;
+     case kTfLiteUInt8:
+       resize<uint8_t>(interpreter->typed_tensor<uint8_t>(input), in.data(),
+-                      image_height, image_width, image_channels, wanted_height,
++                      height, width, channels, wanted_height,
+                       wanted_width, wanted_channels, s);
+       break;
+     default:
+@@ -200,6 +210,11 @@ void RunInference(Settings* s) {
+       exit(-1);
+   }
+ 
++  // Dump input tensor for verification.
++  std::ofstream file("/data/tf/input.bin", std::ios::out | std::ios::binary);
++  file.write(reinterpret_cast<char*>(interpreter->tensor(input)->data.uint8), in.size());
++  file.close();
++
+   profiling::Profiler* profiler = new profiling::Profiler();
+   interpreter->SetProfiler(profiler);
+ 
+@@ -230,6 +245,38 @@ void RunInference(Settings* s) {
+     }
+   }
+ 
++  if (s->dump_tensors) {
++    for (int i = 0; i < interpreter->outputs().size(); i++) {
++      int outnode = interpreter->outputs()[i];
++      auto tensor = interpreter->tensor(outnode);
++
++      TfLiteIntArray* outdims = tensor->dims;
++      int outsize = 1;
++      for(int d = 0; d < outdims->size; d++) {
++        outsize *= outdims->data[outdims->size - d - 1];
++      }
++      LOG(INFO) << "OUTNODE: " << outnode << " SIZE: " << outsize << "\n";
++
++      std::stringstream filename("/data/tf/");
++      filename << "tflite_out_tensor_" << outnode
++               << ((s->delegate == kNnapiDelegate) ? "_nnapi_" : "")
++               << ".bin";
++      std::ofstream tfile(filename.str(), std::ios::out | std::ios::binary);
++
++      char* data = reinterpret_cast<char*>(tensor->data.uint8);
++      switch (interpreter->tensor(outnode)->type) {
++        case kTfLiteFloat32: {
++          tfile.write(data, outsize * 4);
++          break;
++        }
++        case kTfLiteUInt8: {
++          tfile.write(data, outsize * 1);
++          break;
++        }
++      }
++    }
++  }
++
+   const float threshold = 0.001f;
+ 
+   std::vector<std::pair<float, int>> top_results;
+@@ -278,10 +325,12 @@ void display_usage() {
+       << "--input_mean, -b: input mean\n"
+       << "--input_std, -s: input standard deviation\n"
+       << "--image, -i: image_name.bmp\n"
++      << "--dimensions, -n: 320x320x3\n"
+       << "--labels, -l: labels for the model\n"
+       << "--tflite_model, -m: model_name.tflite\n"
+       << "--profiling, -p: [0|1], profiling or not\n"
+       << "--num_results, -r: number of results to show\n"
++      << "--dump_tensors, -u: [0|1] Dump output tensors\n"
+       << "--threads, -t: number of threads\n"
+       << "--verbose, -v: [0|1] print more information\n"
+       << "\n";
+@@ -300,6 +349,7 @@ int Main(int argc, char** argv) {
+         {"count", required_argument, nullptr, 'c'},
+         {"verbose", required_argument, nullptr, 'v'},
+         {"image", required_argument, nullptr, 'i'},
++        {"dimensions", required_argument, nullptr, 'n'},
+         {"labels", required_argument, nullptr, 'l'},
+         {"tflite_model", required_argument, nullptr, 'm'},
+         {"profiling", required_argument, nullptr, 'p'},
+@@ -307,12 +357,13 @@ int Main(int argc, char** argv) {
+         {"input_mean", required_argument, nullptr, 'b'},
+         {"input_std", required_argument, nullptr, 's'},
+         {"num_results", required_argument, nullptr, 'r'},
++        {"dump_tensors", required_argument, nullptr, 'u'},
+         {nullptr, 0, nullptr, 0}};
+ 
+     /* getopt_long stores the option index here. */
+     int option_index = 0;
+ 
+-    c = getopt_long(argc, argv, "a:b:c:d:e:f:i:l:m:p:r:s:t:v:", long_options,
++    c = getopt_long(argc, argv, "a:b:c:d:e:f:i:n:l:m:p:r:u:s:t:v:", long_options,
+                     &option_index);
+ 
+     /* Detect the end of the options. */
+@@ -342,7 +393,12 @@ int Main(int argc, char** argv) {
+             strtol(optarg, nullptr, 10);  // NOLINT(runtime/deprecated_fn)
+         break;
+       case 'i':
+-        s.input_bmp_name = optarg;
++        s.input_name = optarg;
++        break;
++      case 'n':
++        s.width = strtol(std::strtok(optarg, "x"), nullptr, 10);
++        s.height = strtol(std::strtok(nullptr, "x"), nullptr, 10);
++        s.channels = strtol(std::strtok(nullptr, "x"), nullptr, 10);
+         break;
+       case 'l':
+         s.labels_file_name = optarg;
+@@ -358,6 +414,10 @@ int Main(int argc, char** argv) {
+         s.number_of_results =
+             strtol(optarg, nullptr, 10);  // NOLINT(runtime/deprecated_fn)
+         break;
++      case 'u':
++        s.dump_tensors =
++            strtol(optarg, nullptr, 10);  // NOLINT(runtime/deprecated_fn)
++        break;
+       case 's':
+         s.input_std = strtod(optarg, nullptr);
+         break;
+diff --git a/tensorflow/lite/examples/label_image/label_image.h b/tensorflow/lite/examples/label_image/label_image.h
+index 3b495e6..fb40e15 100644
+--- a/tensorflow/lite/examples/label_image/label_image.h
++++ b/tensorflow/lite/examples/label_image/label_image.h
+@@ -27,17 +27,21 @@ struct Settings {
+   bool input_floating = false;
+   bool profiling = false;
+   bool allow_fp16 = false;
++  bool dump_tensors = false;
+   int loop_count = 1;
+   float input_mean = 127.5f;
+   float input_std = 127.5f;
+   string model_name = "./mobilenet_quant_v1_224.tflite";
+-  string input_bmp_name = "./grace_hopper.bmp";
++  string input_name = "./grace_hopper.bmp";
+   string labels_file_name = "./labels.txt";
+   string input_layer_type = "uint8_t";
+   int number_of_threads = 4;
+   int number_of_results = 5;
+   int delegate = 0;
+   int preferences = 0;
++  int width = 320;
++  int height = 320;
++  int channels = 3;
+ };
+ 
+ enum DelegateType {
+-- 
+1.9.1
+

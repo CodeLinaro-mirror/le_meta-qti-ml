@@ -1,0 +1,45 @@
+From f9464c8d5d91a18fcd3a7ceb5a644dd93080fd68 Mon Sep 17 00:00:00 2001
+From: Sagar Sahu <sahusag@codeaurora.org>
+Date: Wed, 3 Jul 2019 17:28:18 +0530
+Subject: [PATCH 1/4] tensorflow: Fix download dependecies shell script
+
+Add insecure flag in curl for accessing https link without
+certificate issue.
+
+Update Eigen url mirror.bazel to mirror.tensorflow to fix
+404 server not found issue.
+---
+ tensorflow/lite/tools/make/download_dependencies.sh | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/tensorflow/lite/tools/make/download_dependencies.sh b/tensorflow/lite/tools/make/download_dependencies.sh
+index eb002eb..564aa49 100755
+--- a/tensorflow/lite/tools/make/download_dependencies.sh
++++ b/tensorflow/lite/tools/make/download_dependencies.sh
+@@ -29,7 +29,7 @@ if [ ! -f $BZL_FILE_PATH ]; then
+   exit 1;
+ fi
+
+-EIGEN_URL="$(grep -o 'http.*bitbucket.org/eigen/eigen/get/.*tar\.gz' "${BZL_FILE_PATH}" | grep -v mirror.bazel | head -n1)"
++EIGEN_URL="$(grep -o 'http.*bitbucket.org/eigen/eigen/get/.*tar\.gz' "${BZL_FILE_PATH}" | grep -v mirror.tensorflow | head -n1)"
+ GEMMLOWP_URL="$(grep -o 'http://mirror.tensorflow.org/github.com/google/gemmlowp/.*zip' "${BZL_FILE_PATH}" | head -n1)"
+ GOOGLETEST_URL="https://github.com/google/googletest/archive/release-1.8.0.tar.gz"
+ ABSL_URL="$(grep -o 'https://github.com/abseil/abseil-cpp/.*tar.gz' "${BZL_FILE_PATH}" | head -n1)"
+@@ -61,12 +61,12 @@ download_and_extract() {
+   echo "downloading ${url}" >&2
+   mkdir -p "${dir}"
+   if [[ "${url}" == *gz ]]; then
+-    curl -Ls "${url}" | tar -C "${dir}" --strip-components=1 -xz
++    curl --insecure -Ls "${url}" | tar -C "${dir}" --strip-components=1 -xz
+   elif [[ "${url}" == *zip ]]; then
+     tempdir=$(mktemp -d)
+     tempdir2=$(mktemp -d)
+
+-    curl -L ${url} > ${tempdir}/zipped.zip
++    curl --insecure -L ${url} > ${tempdir}/zipped.zip
+     unzip ${tempdir}/zipped.zip -d ${tempdir2}
+
+     # If the zip file contains nested directories, extract the files from the
+--
+1.9.1
+

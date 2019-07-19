@@ -1,0 +1,141 @@
+From ebaac9a57a0b11cc5bf040a3d527798569607af6 Mon Sep 17 00:00:00 2001
+From: Angel Hitov <ahitov@codeaurora.org>
+Date: Mon, 11 Mar 2019 12:49:55 -0700
+Subject: [PATCH 2/2] Add cmake files for TFLite v1.13
+
+---
+ CMakeLists.txt                 | 11 ++++
+ Makefile                       |  1 +
+ tensorflow/lite/CMakeLists.txt | 93 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 105 insertions(+)
+ create mode 100644 CMakeLists.txt
+ create mode 100644 Makefile
+ create mode 100644 tensorflow/lite/CMakeLists.txt
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000000..72ed7d98f3
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,11 @@
++cmake_minimum_required(VERSION 3.3.1)
++project(tensorflow)
++
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fno-short-enums -Ofast -Wl,-no-undefined -lstdc++")
++
++set(CMAKE_CXX_STANDARD 14)
++
++include_directories(.)
++
++add_subdirectory(tensorflow/lite)
+\ No newline at end of file
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000000..96551641e7
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1 @@
++include tensorflow/lite/tools/make/Makefile
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+new file mode 100644
+index 0000000000..6098035724
+--- /dev/null
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -0,0 +1,93 @@
++include_directories(tools/make/downloads/eigen)
++include_directories(tools/make/downloads/gemmlowp)
++include_directories(tools/make/downloads/farmhash/src)
++include_directories(tools/make/downloads/flatbuffers/include)
++
++add_definitions(-DEIGEN_MPL2_ONLY)
++
++set (TFLITE_TARGET_NAME tensorflow-lite)
++
++FILE(GLOB TFLITE_SOURCE_FILES
++    *.cc
++    *.c
++    c/*.c
++    core/*.cc
++    core/api/*.cc
++    kernels/*.cc
++    kernels/internal/*.cc
++    kernels/internal/optimized/*.cc
++    kernels/internal/reference/*.cc
++    kernels/*.c
++    kernels/internal/*.c
++    kernels/internal/optimized/*.c
++    kernels/internal/reference/*.c
++    tools/make/downloads/farmhash/src/farmhash.cc
++    tools/make/downloads/fft2d/fftsg.c
++)
++
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*test.cc$")
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*/*/*test.cc$")
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*/*/*/*test.cc$")
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*/*/*/*/*test.cc$")
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*kernels/test_util.cc$")
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*mmap_allocation_disabled.cc$")
++list(FILTER TFLITE_SOURCE_FILES EXCLUDE REGEX ".*nnapi_delegate_disabled.cc$")
++
++add_library(${TFLITE_TARGET_NAME} SHARED ${TFLITE_SOURCE_FILES})
++
++target_link_libraries(${TFLITE_TARGET_NAME} pthread)
++target_link_libraries(${TFLITE_TARGET_NAME} dl)
++
++install(
++    TARGETS ${TFLITE_TARGET_NAME}
++    LIBRARY DESTINATION lib
++    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
++                GROUP_EXECUTE GROUP_READ
++                WORLD_EXECUTE WORLD_READ
++)
++
++install(
++    DIRECTORY .
++    DESTINATION include/tensorflow/lite
++    FILES_MATCHING
++    PATTERN "*.h"
++)
++
++########################### label_image #############################
++set(LABEL_IMAGE_TARGET_NAME label_image)
++
++set(LABEL_IMAGE_SOURCE_FILES
++    examples/label_image/bitmap_helpers.cc
++    examples/label_image/label_image.cc
++)
++
++add_executable(${LABEL_IMAGE_TARGET_NAME} ${LABEL_IMAGE_SOURCE_FILES})
++
++target_link_libraries(${LABEL_IMAGE_TARGET_NAME} ${TFLITE_TARGET_NAME})
++
++install(
++    TARGETS ${LABEL_IMAGE_TARGET_NAME}
++    RUNTIME DESTINATION bin
++    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
++                GROUP_EXECUTE GROUP_READ
++                WORLD_EXECUTE WORLD_READ
++)
++
++########################### Minimal ################################
++set(MINIMAL_TARGET_NAME minimal)
++
++set(MINIMAL_SOURCE_FILES
++    examples/minimal/minimal.cc
++)
++
++add_executable(${MINIMAL_TARGET_NAME} ${MINIMAL_SOURCE_FILES})
++
++target_link_libraries(${MINIMAL_TARGET_NAME} ${TFLITE_TARGET_NAME})
++
++install(
++    TARGETS ${MINIMAL_TARGET_NAME}
++    RUNTIME DESTINATION bin
++    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
++                GROUP_EXECUTE GROUP_READ
++                WORLD_EXECUTE WORLD_READ
++)
+--
+2.21.0
+

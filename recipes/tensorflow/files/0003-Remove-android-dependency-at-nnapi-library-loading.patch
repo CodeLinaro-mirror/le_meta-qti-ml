@@ -1,0 +1,29 @@
+From 060470d7902af15386f0a442ece7ebc1f546d2bf Mon Sep 17 00:00:00 2001
+From: Angel Hitov <ahitov@codeaurora.org>
+Date: Wed, 13 Mar 2019 16:30:15 -0700
+Subject: [PATCH 3/3] Remove android dependency at nnapi library loading
+
+---
+ tensorflow/lite/nnapi/NeuralNetworksShim.h | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/tensorflow/lite/nnapi/NeuralNetworksShim.h b/tensorflow/lite/nnapi/NeuralNetworksShim.h
+index c39502f..e643fb8 100644
+--- a/tensorflow/lite/nnapi/NeuralNetworksShim.h
++++ b/tensorflow/lite/nnapi/NeuralNetworksShim.h
+@@ -35,12 +35,10 @@ inline void* loadLibrary(const char* name) {
+   // TODO: change RTLD_LOCAL? Assumes there can be multiple instances of nn
+   // api RT
+   void* handle = nullptr;
+-#ifdef __ANDROID__
+   handle = dlopen(name, RTLD_LAZY | RTLD_LOCAL);
+   if (handle == nullptr) {
+     NNAPI_LOG("nnapi error: unable to open library %s", name);
+   }
+-#endif
+   return handle;
+ }
+
+--
+1.9.1
+
