@@ -34,10 +34,10 @@ FILES_${PN}-libsample-minimal-nn-hal-dbg    = "${libdir}/nn/.debug/libsample-min
 FILES_${PN}-libsample-minimal-nn-hal        = "${libdir}/nn/libsample-minimal-nn-hal.so"
 FILES_${PN}-libsample-minimal-nn-hal-dev    = "${libdir}/nn/libsample-minimal-nn-hal.so ${includedir}"
 
-FILES_${PN} = "${libdir}/lib*.so"
+FILES_${PN} = "${libdir}/lib*.so ${bindir}"
 FILES_${PN} += "${libdir}/nn/lib*.so"
 
-FILES_${PN}-dev = "${libdir}/lib*.so ${includedir}"
+FILES_${PN}-dev = "${libdir}/lib*.so ${includedir} ${bindir}"
 FILES_${PN}-dev += "${libdir}/nn/lib*.so"
 
 FILES_${PN}-dbg = "${libdir}/.debug"

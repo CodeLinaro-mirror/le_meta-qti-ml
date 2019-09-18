@@ -22,20 +22,14 @@ FILESPATH =+ "${WORKSPACE}/external/:"
 SRC_URI = "file://tensorflow"
 S = "${WORKDIR}/tensorflow"
 
-# Installation directories.
-INSTALL_INCDIR := "${includedir}"
-INSTALL_BINDIR := "${bindir}"
-INSTALL_LIBDIR := "${libdir}"
+EXTRA_OECMAKE += "-DSYSROOT_INCDIR=${STAGING_INCDIR}"
+EXTRA_OECMAKE += "-DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
+EXTRA_OECMAKE += "-DTFLITE_INSTALL_INCDIR=${includedir}"
+EXTRA_OECMAKE += "-DTFLITE_INSTALL_BINDIR=${bindir}"
+EXTRA_OECMAKE += "-DTFLITE_INSTALL_LIBDIR=${libdir}"
 
-EXTRA_OECMAKE += " -DSYSROOT_INCDIR=${STAGING_INCDIR}"
-EXTRA_OECMAKE += " -DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
-EXTRA_OECMAKE += "-DTFLITE_INSTALL_INCDIR=${INSTALL_INCDIR}"
-EXTRA_OECMAKE += "-DTFLITE_INSTALL_BINDIR=${INSTALL_BINDIR}"
-EXTRA_OECMAKE += "-DTFLITE_INSTALL_LIBDIR=${INSTALL_LIBDIR}"
-
-FILES_${PN}      += "${INSTALL_BINDIR}"
-FILES_${PN}      += "${INSTALL_LIBDIR}"
-FILES_${PN}-dev  += "${INSTALL_INCDIR}"
+FILES_${PN} = "${libdir}/lib*.so ${bindir}/*"
+FILES_${PN}-dev += "${includedir}"
 
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
@@ -74,3 +68,4 @@ do_install_append() {
     install -d ${D}${includedir}/flatbuffers
     install -m 0555 ${S}/tensorflow/lite/tools/make/downloads/flatbuffers/include/flatbuffers/* ${D}${includedir}/flatbuffers/
 }
+
