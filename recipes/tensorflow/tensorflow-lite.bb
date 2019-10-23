@@ -70,5 +70,12 @@ do_install_append() {
 
     install -d ${D}${includedir}/flatbuffers
     install -m 0555 ${S}/tensorflow/lite/tools/make/downloads/flatbuffers/include/flatbuffers/* ${D}${includedir}/flatbuffers/
+
+    install -d ${D}${libdir}/pkgconfig
+    install -m 0644 ${S}/tensorflow-lite.pc.in ${D}${libdir}/pkgconfig/tensorflow-lite.pc
+    sed -i 's:@version@:${PV}:g
+        s:@libdir@:${libdir}:g
+        s:@includedir@:${includedir}:g' ${D}${libdir}/pkgconfig/tensorflow-lite.pc
+
 }
 
