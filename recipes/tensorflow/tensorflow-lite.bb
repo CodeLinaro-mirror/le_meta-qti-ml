@@ -8,8 +8,7 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/\
 ${LICENSE};md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 # The revision of the recipe used to build the package.
-PV = "1.14"
-PR = "r0"
+PV = "2.0"
 
 # Dependencies.
 DEPENDS = "unzip-native"
