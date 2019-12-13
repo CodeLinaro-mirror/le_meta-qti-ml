@@ -1,4 +1,4 @@
-inherit cmake
+inherit cmake sdllvm
 
 SUMMARY = "Android NN framework"
 DESCRIPTION = "\
