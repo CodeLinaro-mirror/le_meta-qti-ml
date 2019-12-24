@@ -21,7 +21,7 @@ DEPENDS += "gtest"
 DEPENDS += "libfmq"
 DEPENDS += "openssl"
 
-FILESPATH =+ "${WORKSPACE}/frameworks/ml/:"
+FILESPATH =+ "${WORKSPACE}/external/frameworks/ml/:"
 SRC_URI = "file://nn"
 S = "${WORKDIR}/nn"
 
