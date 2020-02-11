@@ -14,6 +14,7 @@ PV = "2.0"
 DEPENDS = "unzip-native"
 DEPENDS += "curl-native"
 DEPENDS += "zlib"
+DEPENDS += "gtest"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 
