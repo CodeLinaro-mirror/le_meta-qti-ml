@@ -15,6 +15,9 @@ DEPENDS = "unzip-native"
 DEPENDS += "curl-native"
 DEPENDS += "zlib"
 DEPENDS += "gtest"
+DEPENDS += "protobuf"
+DEPENDS += "protobuf-native"
+DEPENDS += "jpeg"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 
