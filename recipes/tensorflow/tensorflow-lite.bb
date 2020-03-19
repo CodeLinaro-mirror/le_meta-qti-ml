@@ -14,6 +14,10 @@ PV = "2.0"
 DEPENDS = "unzip-native"
 DEPENDS += "curl-native"
 DEPENDS += "zlib"
+DEPENDS += "gtest"
+DEPENDS += "protobuf"
+DEPENDS += "protobuf-native"
+DEPENDS += "jpeg"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 
@@ -66,5 +70,12 @@ do_install_append() {
 
     install -d ${D}${includedir}/flatbuffers
     install -m 0555 ${S}/tensorflow/lite/tools/make/downloads/flatbuffers/include/flatbuffers/* ${D}${includedir}/flatbuffers/
+
+    install -d ${D}${libdir}/pkgconfig
+    install -m 0644 ${S}/tensorflow-lite.pc.in ${D}${libdir}/pkgconfig/tensorflow-lite.pc
+    sed -i 's:@version@:${PV}:g
+        s:@libdir@:${libdir}:g
+        s:@includedir@:${includedir}:g' ${D}${libdir}/pkgconfig/tensorflow-lite.pc
+
 }
 

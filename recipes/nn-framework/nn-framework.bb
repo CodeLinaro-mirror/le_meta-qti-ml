@@ -25,9 +25,13 @@ FILESPATH =+ "${WORKSPACE}/external/frameworks/ml/:"
 SRC_URI = "file://nn"
 S = "${WORKDIR}/nn"
 
+# Temporary data path
+TEMP_DIR = "/data/local/tmp"
+
 EXTRA_OECMAKE += " -DSYSROOT_INCDIR=${STAGING_INCDIR}"
 EXTRA_OECMAKE += " -DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
 EXTRA_OECMAKE += " -DNNAPI_LIB_DIR=${libdir}"
+EXTRA_OECMAKE += " -DVTS_TEMP_PATH=${TEMP_DIR}"
 
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
@@ -44,5 +48,7 @@ FILES_${PN}-dev += "${libdir}/nn/lib*.so"
 
 FILES_${PN}-dbg = "${libdir}/.debug"
 FILES_${PN}-dbg += "${libdir}/nn/.debug"
+
+FILES_${PN} += "${TEMP_DIR}"
 
 PACKAGES = "${PN} ${PN}-dbg ${PN}-dev"
