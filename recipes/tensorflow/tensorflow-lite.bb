@@ -18,6 +18,7 @@ DEPENDS += "gtest"
 DEPENDS += "protobuf"
 DEPENDS += "protobuf-native"
 DEPENDS += "jpeg"
+DEPENDS += "adsprpc"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 
