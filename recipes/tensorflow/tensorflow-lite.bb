@@ -38,7 +38,7 @@ SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
 
 download_dependencies() {
-    ${S}/tensorflow/lite/tools/make/download_dependencies.sh
+    ${S}/tensorflow/lite/tools/make/download_dependencies.sh "$@" || die "download_dependencies.sh failed"
 }
 
 python do_patch() {
