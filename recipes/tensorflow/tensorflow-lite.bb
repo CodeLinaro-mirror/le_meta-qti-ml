@@ -1,4 +1,4 @@
-inherit cmake
+inherit cmake sdllvm
 
 SUMMARY = "Tensorflow Lite"
 DESCRIPTION = "TensorFlow Lite C++ Library"
