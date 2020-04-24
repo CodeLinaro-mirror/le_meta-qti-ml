@@ -13,7 +13,7 @@ PV = "1.0"
 PR = "r0"
 
 # Dependencies.
-DEPENDS = "libbase"
+DEPENDS += "libbase"
 DEPENDS += "liblog"
 DEPENDS += "libutils"
 DEPENDS += "tensorflow-lite"
@@ -28,10 +28,14 @@ S = "${WORKDIR}/nn"
 # Temporary data path
 TEMP_DIR = "/data/local/tmp"
 
+#Set Package Config value vts for enabling vts compilation
+#PACKAGECONFIG ??= " vts"
+
 EXTRA_OECMAKE += " -DSYSROOT_INCDIR=${STAGING_INCDIR}"
 EXTRA_OECMAKE += " -DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
 EXTRA_OECMAKE += " -DNNAPI_LIB_DIR=${libdir}"
-EXTRA_OECMAKE += " -DVTS_TEMP_PATH=${TEMP_DIR}"
+
+PACKAGECONFIG[vts] = "-DVTS_TEMP_PATH=${TEMP_DIR} -DUSE_VTS=ON,,,"
 
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
