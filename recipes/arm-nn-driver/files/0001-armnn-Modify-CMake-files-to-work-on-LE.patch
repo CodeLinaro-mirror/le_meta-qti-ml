@@ -1,0 +1,288 @@
+From 3ff5ed6f83780186d0bdee9a64aac6b1ce23da34 Mon Sep 17 00:00:00 2001
+From: Aishwary Gupta <aishgupt@codeaurora.org>
+Date: Fri, 29 May 2020 19:31:28 +0530
+Subject: [PATCH 1/1] armnn: Modify CMake files to work on LE
+
+Change-Id: I53be676d2243b61883467b22467d04acddba0d52
+---
+ CMakeLists.txt                                  | 17 +++++++-
+ cmake/GlobalConfig.cmake                        |  6 ++-
+ src/backends/aclCommon/common.cmake             |  8 ++--
+ src/backends/backendsCommon/test/CMakeLists.txt |  6 +--
+ src/backends/cl/CMakeLists.txt                  | 54 +++++++++++--------------
+ src/backends/cl/backend.cmake                   |  8 +---
+ src/backends/neon/CMakeLists.txt                | 49 +++++++++-------------
+ src/backends/neon/backend.cmake                 |  8 +---
+ 8 files changed, 72 insertions(+), 84 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e5876db..349c6bc 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3,8 +3,11 @@
+ # SPDX-License-Identifier: MIT
+ #
+ cmake_minimum_required (VERSION 3.0.2) # 3.0.2 required for return() statement used in AddDllCopyCommands.cmake
++
+ project(armnn)
+ 
++set(CMAKE_CXX_STANDARD 14)
++
+ set(additional_cmake_files)
+ list(APPEND additional_cmake_files
+     cmake/ArmnnVersion.cmake
+@@ -576,7 +579,7 @@ endif()
+ 
+ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+ 
+-target_link_libraries(armnn ${Boost_THREAD_LIBRARY}
++target_link_libraries(armnn ${Boost_THREAD_LIBRARY} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+                             ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+ 
+ if(ARMCOMPUTENEON OR ARMCOMPUTECL)
+@@ -1003,3 +1006,15 @@ if(BUILD_GATORD_MOCK)
+     endif()
+ 
+ endif()
++
++target_link_libraries(armnn
++    armnn-arm_compute
++    boost_log
++    boost_system
++    boost_thread
++    boost_unit_test_framework
++    boost_filesystem
++    boost_program_options
++    pthread
++    neuralnetworks_common
++)
+diff --git a/cmake/GlobalConfig.cmake b/cmake/GlobalConfig.cmake
+index 8e3b68d..555dad7 100644
+--- a/cmake/GlobalConfig.cmake
++++ b/cmake/GlobalConfig.cmake
+@@ -56,6 +56,8 @@ endif()
+ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ if(COMPILER_IS_GNU_LIKE)
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Werror -Wold-style-cast -Wno-missing-braces -Wconversion -Wsign-conversion")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=old-style-cast -Wno-error=sign-conversion -Wno-error=mismatched-tags -Wno-error=range-loop-construct")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=defaulted-function-deleted -Wno-error=conversion -Wno-error=deprecated-copy")
+ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+ 	# Disable C4996 (use of deprecated identifier) due to https://developercommunity.visualstudio.com/content/problem/252574/deprecated-compilation-warning-for-virtual-overrid.html
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /MP /wd4996")
+@@ -69,7 +71,7 @@ endif()
+ # Compiler flags for Release builds
+ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG")
+ if(COMPILER_IS_GNU_LIKE)
+-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
++    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -mcpu=cortex-a57 -marm")
+ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD /O2")
+ endif()
+@@ -118,7 +120,7 @@ else()
+ endif()
+ add_definitions("-DBOOST_ALL_NO_LIB") # Turn off auto-linking as we specify the libs manually
+ find_package(Boost 1.59 REQUIRED COMPONENTS unit_test_framework system filesystem program_options)
+-include_directories(SYSTEM "${Boost_INCLUDE_DIRS}")
++include_directories(${Boost_INCLUDE_DIRS})
+ link_directories(${Boost_LIBRARY_DIRS})
+ 
+ # pthread
+diff --git a/src/backends/aclCommon/common.cmake b/src/backends/aclCommon/common.cmake
+index 89be236..01eef90 100644
+--- a/src/backends/aclCommon/common.cmake
++++ b/src/backends/aclCommon/common.cmake
+@@ -3,8 +3,6 @@
+ # SPDX-License-Identifier: MIT
+ #
+ 
+-if(ARMCOMPUTENEON OR ARMCOMPUTECL)
+-    add_subdirectory(${PROJECT_SOURCE_DIR}/src/backends/aclCommon)
+-    list(APPEND armnnLibraries armnnAclCommon)
+-    list(APPEND armnnUnitTestLibraries armnnAclCommonUnitTests)
+-endif()
++add_subdirectory(${PROJECT_SOURCE_DIR}/src/backends/aclCommon)
++list(APPEND armnnLibraries armnnAclCommon)
++list(APPEND armnnUnitTestLibraries armnnAclCommonUnitTests)
+diff --git a/src/backends/backendsCommon/test/CMakeLists.txt b/src/backends/backendsCommon/test/CMakeLists.txt
+index 0376e3e..25708e2 100644
+--- a/src/backends/backendsCommon/test/CMakeLists.txt
++++ b/src/backends/backendsCommon/test/CMakeLists.txt
+@@ -151,10 +151,8 @@ if (ARMNNREF)
+         )
+ endif()
+ 
+-if(ARMCOMPUTENEON AND ARMCOMPUTECL)
+-    list(APPEND armnnBackendsCommonUnitTests_sources
+-        CompatibilityTests.cpp)
+-endif()
++list(APPEND armnnBackendsCommonUnitTests_sources
++            CompatibilityTests.cpp)
+ 
+ add_library(armnnBackendsCommonUnitTests OBJECT ${armnnBackendsCommonUnitTests_sources})
+ target_include_directories(armnnBackendsCommonUnitTests PRIVATE ${PROJECT_SOURCE_DIR}/src/armnn)
+diff --git a/src/backends/cl/CMakeLists.txt b/src/backends/cl/CMakeLists.txt
+index 64b0463..fe68c33 100644
+--- a/src/backends/cl/CMakeLists.txt
++++ b/src/backends/cl/CMakeLists.txt
+@@ -3,41 +3,33 @@
+ # SPDX-License-Identifier: MIT
+ #
+ 
+-if(ARMCOMPUTECL)
+-    list(APPEND armnnClBackend_sources
+-        ClBackend.cpp
+-        ClBackend.hpp
+-        ClBackendContext.cpp
+-        ClBackendContext.hpp
+-        ClBackendId.hpp
+-        ClContextControl.cpp
+-        ClContextControl.hpp
+-        ClLayerSupport.cpp
+-        ClLayerSupport.hpp
+-        ClRegistryInitializer.cpp
+-        ClTensorHandle.hpp
+-        ClTensorHandleFactory.cpp
+-        ClTensorHandleFactory.hpp
+-        ClWorkloadFactory.cpp
+-        ClWorkloadFactory.hpp
+-        OpenClTimer.cpp
+-        OpenClTimer.hpp
+-    )
++list(APPEND armnnClBackend_sources
++    ClBackend.cpp
++    ClBackend.hpp
++    ClBackendContext.cpp
++    ClBackendContext.hpp
++    ClBackendId.hpp
++    ClContextControl.cpp
++    ClContextControl.hpp
++    ClLayerSupport.cpp
++    ClLayerSupport.hpp
++    ClRegistryInitializer.cpp
++    ClTensorHandle.hpp
++    ClTensorHandleFactory.cpp
++    ClTensorHandleFactory.hpp
++    ClWorkloadFactory.cpp
++    ClWorkloadFactory.hpp
++    OpenClTimer.cpp
++    OpenClTimer.hpp
++)
+ 
+-    add_subdirectory(workloads)
++add_subdirectory(workloads)
+ 
+-    if(BUILD_UNIT_TESTS)
+-        add_subdirectory(test)
+-    endif()
+-
+-else()
+-    list(APPEND armnnClBackend_sources
+-        ClBackendId.hpp
+-        ClLayerSupport.cpp
+-        ClLayerSupport.hpp
+-    )
++if(BUILD_UNIT_TESTS)
++    add_subdirectory(test)
+ endif()
+ 
++
+ add_library(armnnClBackend OBJECT ${armnnClBackend_sources})
+ target_include_directories(armnnClBackend PRIVATE ${PROJECT_SOURCE_DIR}/src/armnn)
+ target_include_directories(armnnClBackend PRIVATE ${PROJECT_SOURCE_DIR}/src/armnnUtils)
+diff --git a/src/backends/cl/backend.cmake b/src/backends/cl/backend.cmake
+index 9484b94..864e8db 100644
+--- a/src/backends/cl/backend.cmake
++++ b/src/backends/cl/backend.cmake
+@@ -6,9 +6,5 @@
+ add_subdirectory(${PROJECT_SOURCE_DIR}/src/backends/cl)
+ list(APPEND armnnLibraries armnnClBackend)
+ 
+-if(ARMCOMPUTECL)
+-    list(APPEND armnnLibraries armnnClBackendWorkloads)
+-    list(APPEND armnnUnitTestLibraries armnnClBackendUnitTests)
+-else()
+-    message(STATUS "CL backend is disabled")
+-endif()
++list(APPEND armnnLibraries armnnClBackendWorkloads)
++list(APPEND armnnUnitTestLibraries armnnClBackendUnitTests)
+diff --git a/src/backends/neon/CMakeLists.txt b/src/backends/neon/CMakeLists.txt
+index f7b0650..0f5e32f 100644
+--- a/src/backends/neon/CMakeLists.txt
++++ b/src/backends/neon/CMakeLists.txt
+@@ -3,37 +3,28 @@
+ # SPDX-License-Identifier: MIT
+ #
+ 
+-if(ARMCOMPUTENEON)
+-    list(APPEND armnnNeonBackend_sources
+-        NeonBackend.cpp
+-        NeonBackend.hpp
+-        NeonBackendId.hpp
+-        NeonInterceptorScheduler.hpp
+-        NeonInterceptorScheduler.cpp
+-        NeonLayerSupport.cpp
+-        NeonLayerSupport.hpp
+-        NeonRegistryInitializer.cpp
+-        NeonTensorHandle.hpp
+-        NeonTensorHandleFactory.cpp
+-        NeonTensorHandleFactory.hpp
+-        NeonTimer.hpp
+-        NeonTimer.cpp
+-        NeonWorkloadFactory.cpp
+-        NeonWorkloadFactory.hpp
+-    )
++list(APPEND armnnNeonBackend_sources
++    NeonBackend.cpp
++    NeonBackend.hpp
++    NeonBackendId.hpp
++    NeonInterceptorScheduler.hpp
++    NeonInterceptorScheduler.cpp
++    NeonLayerSupport.cpp
++    NeonLayerSupport.hpp
++    NeonRegistryInitializer.cpp
++    NeonTensorHandle.hpp
++    NeonTensorHandleFactory.cpp
++    NeonTensorHandleFactory.hpp
++    NeonTimer.hpp
++    NeonTimer.cpp
++    NeonWorkloadFactory.cpp
++    NeonWorkloadFactory.hpp
++)
+ 
+-    add_subdirectory(workloads)
++add_subdirectory(workloads)
+ 
+-    if(BUILD_UNIT_TESTS)
+-        add_subdirectory(test)
+-    endif()
+-
+-else()
+-    list(APPEND armnnNeonBackend_sources
+-        NeonBackendId.hpp
+-        NeonLayerSupport.cpp
+-        NeonLayerSupport.hpp
+-    )
++if(BUILD_UNIT_TESTS)
++    add_subdirectory(test)
+ endif()
+ 
+ add_library(armnnNeonBackend OBJECT ${armnnNeonBackend_sources})
+diff --git a/src/backends/neon/backend.cmake b/src/backends/neon/backend.cmake
+index 801ba7c..835e70e 100644
+--- a/src/backends/neon/backend.cmake
++++ b/src/backends/neon/backend.cmake
+@@ -6,9 +6,5 @@
+ add_subdirectory(${PROJECT_SOURCE_DIR}/src/backends/neon)
+ list(APPEND armnnLibraries armnnNeonBackend)
+ 
+-if(ARMCOMPUTENEON)
+-    list(APPEND armnnLibraries armnnNeonBackendWorkloads)
+-    list(APPEND armnnUnitTestLibraries armnnNeonBackendUnitTests)
+-else()
+-    message(STATUS "NEON backend is disabled")
+-endif()
++list(APPEND armnnLibraries armnnNeonBackendWorkloads)
++list(APPEND armnnUnitTestLibraries armnnNeonBackendUnitTests)
+-- 
+1.9.1
+
