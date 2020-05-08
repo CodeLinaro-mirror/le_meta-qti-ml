@@ -18,5 +18,5 @@ RDEPENDS_packagegroup-qti-ml = ' \
 
 RDEPENDS_packagegroup-qti-ml-tflite = " \
     tensorflow-lite \
-    ${@bb.utils.contains("MACHINE_FEATURES", "tflite-hw-delegate", "nn-framework", "", d)} \
+    ${@bb.utils.contains("MACHINE_FEATURES", "qti-tflite-delegate", "nn-framework", "", d)} \
     "

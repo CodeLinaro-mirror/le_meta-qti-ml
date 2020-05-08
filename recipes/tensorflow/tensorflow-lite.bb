@@ -1,4 +1,4 @@
-inherit cmake
+inherit cmake sdllvm
 
 SUMMARY = "Tensorflow Lite"
 DESCRIPTION = "TensorFlow Lite C++ Library"
@@ -14,10 +14,10 @@ PV = "2.0"
 DEPENDS = "unzip-native"
 DEPENDS += "curl-native"
 DEPENDS += "zlib"
-DEPENDS += "gtest"
 DEPENDS += "protobuf"
 DEPENDS += "protobuf-native"
 DEPENDS += "jpeg"
+DEPENDS += "adsprpc"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 
@@ -38,7 +38,7 @@ SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
 
 download_dependencies() {
-    ${S}/tensorflow/lite/tools/make/download_dependencies.sh
+    ${S}/tensorflow/lite/tools/make/download_dependencies.sh "$@" || die "download_dependencies.sh failed"
 }
 
 python do_patch() {
