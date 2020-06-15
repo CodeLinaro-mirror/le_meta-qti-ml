@@ -19,6 +19,9 @@ DEPENDS += "protobuf-native"
 DEPENDS += "jpeg"
 DEPENDS += "adsprpc"
 DEPENDS += "xnnpack"
+DEPENDS += "adreno200"
+DEPENDS += "flatbuffers"
+DEPENDS += "flatbuffers-native"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 
@@ -26,11 +29,18 @@ FILESPATH =+ "${WORKSPACE}/external/:"
 SRC_URI = "file://tensorflow"
 S = "${WORKDIR}/tensorflow"
 
+# Include path for private Vulkan headers
+# TODO: Remove this path when Vulkan is supported into adreno library
+VULKAN_INC_DIR = "${WORKSPACE}/adreno200/opengl/qgl/api/Vulkan"
+
+EXTRA_OECMAKE += "-DTFLITE_VULKAN_INC_DIR=${VULKAN_INC_DIR}"
 EXTRA_OECMAKE += "-DSYSROOT_INCDIR=${STAGING_INCDIR}"
 EXTRA_OECMAKE += "-DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
+EXTRA_OECMAKE += "-DSYSROOT_BINDIR_NATIVE=${STAGING_BINDIR_NATIVE}"
 EXTRA_OECMAKE += "-DTFLITE_INSTALL_INCDIR=${includedir}"
 EXTRA_OECMAKE += "-DTFLITE_INSTALL_BINDIR=${bindir}"
 EXTRA_OECMAKE += "-DTFLITE_INSTALL_LIBDIR=${libdir}"
+
 
 FILES_${PN} = "${libdir}/lib*.so ${bindir}/*"
 FILES_${PN}-dev += "${includedir}"
@@ -68,9 +78,6 @@ do_install_append() {
 
     cd ${S}/tensorflow/lite/tools/make/downloads/gemmlowp
     cp --parents $(find . -name "*.h*") ${D}${includedir}/gemmlowp/
-
-    install -d ${D}${includedir}/flatbuffers
-    install -m 0555 ${S}/tensorflow/lite/tools/make/downloads/flatbuffers/include/flatbuffers/* ${D}${includedir}/flatbuffers/
 
     install -d ${D}${libdir}/pkgconfig
     install -m 0644 ${S}/tensorflow-lite.pc.in ${D}${libdir}/pkgconfig/tensorflow-lite.pc
