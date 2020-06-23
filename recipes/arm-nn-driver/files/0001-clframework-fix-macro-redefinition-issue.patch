@@ -1,0 +1,29 @@
+From fe1d044f2372b4c15004b945ce871e56517aed93 Mon Sep 17 00:00:00 2001
+From: Aishwary Gupta <aishgupt@codeaurora.org>
+Date: Thu, 30 Apr 2020 18:11:58 +0530
+Subject: [PATCH 1/1] clframework: fix macro redefinition issue
+
+Change-Id: I7f8ae6972fcdbd85cc5ca190a72857f583617ca6
+---
+ support/Half.h | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/support/Half.h b/support/Half.h
+index ae31be3..bd4c086 100644
+--- a/support/Half.h
++++ b/support/Half.h
+@@ -31,7 +31,10 @@
+ 
+ // Set style to round to nearest
+ #define HALF_ROUND_STYLE 1
+-#define HALF_ROUND_TIES_TO_EVEN 1
++
++#ifndef HALF_ROUND_TIES_TO_EVEN
++	#define HALF_ROUND_TIES_TO_EVEN 1
++#endif
+ 
+ #include "half/half.hpp"
+ 
+-- 
+1.9.1
+
