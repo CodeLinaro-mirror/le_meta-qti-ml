@@ -29,11 +29,6 @@ FILESPATH =+ "${WORKSPACE}/external/:"
 SRC_URI = "file://tensorflow"
 S = "${WORKDIR}/tensorflow"
 
-# Include path for private Vulkan headers
-# TODO: Remove this path when Vulkan is supported into adreno library
-VULKAN_INC_DIR = "${WORKSPACE}/adreno200/opengl/qgl/api/Vulkan"
-
-EXTRA_OECMAKE += "-DTFLITE_VULKAN_INC_DIR=${VULKAN_INC_DIR}"
 EXTRA_OECMAKE += "-DSYSROOT_INCDIR=${STAGING_INCDIR}"
 EXTRA_OECMAKE += "-DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
 EXTRA_OECMAKE += "-DSYSROOT_BINDIR_NATIVE=${STAGING_BINDIR_NATIVE}"
