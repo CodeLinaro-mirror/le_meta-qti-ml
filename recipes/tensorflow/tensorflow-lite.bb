@@ -18,6 +18,7 @@ DEPENDS += "protobuf"
 DEPENDS += "protobuf-native"
 DEPENDS += "jpeg"
 DEPENDS += "adsprpc"
+DEPENDS += "xnnpack"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
 

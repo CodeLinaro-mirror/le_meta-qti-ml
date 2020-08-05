@@ -1,0 +1,125 @@
+From b914165f443a0c0915ea543ad8b79ce37a9e3f62 Mon Sep 17 00:00:00 2001
+From: Aishwary Gupta <aishgupt@codeaurora.org>
+Date: Fri, 26 Jun 2020 01:47:55 +0530
+Subject: [PATCH 1/1] android-nn-driver: lower the priority for ARM NN HAL
+
+Change-Id: I94c20e1ba51f1cf0556409ccd08a104249ab7c56
+---
+ 1.0/ArmnnDriverImpl.cpp | 16 ++++++++--------
+ 1.1/ArmnnDriverImpl.cpp | 20 ++++++++++----------
+ 1.2/ArmnnDriverImpl.cpp |  8 ++++----
+ 3 files changed, 22 insertions(+), 22 deletions(-)
+
+diff --git a/1.0/ArmnnDriverImpl.cpp b/1.0/ArmnnDriverImpl.cpp
+index 427f7a4..8c0b43b 100644
+--- a/1.0/ArmnnDriverImpl.cpp
++++ b/1.0/ArmnnDriverImpl.cpp
+@@ -32,25 +32,25 @@ Return<void> ArmnnDriverImpl::getCapabilities(const armnn::IRuntimePtr& runtime,
+     if (runtime)
+     {
+         capabilities.float32Performance.execTime =
+-            ParseSystemProperty(g_Float32PerformanceExecTimeName, .1f);
++            ParseSystemProperty(g_Float32PerformanceExecTimeName, 5.0f);
+ 
+         capabilities.float32Performance.powerUsage =
+-            ParseSystemProperty(g_Float32PerformancePowerUsageName, .1f);
++            ParseSystemProperty(g_Float32PerformancePowerUsageName, 5.0f);
+ 
+         capabilities.quantized8Performance.execTime =
+-            ParseSystemProperty(g_Quantized8PerformanceExecTimeName, .1f);
++            ParseSystemProperty(g_Quantized8PerformanceExecTimeName, 5.0f);
+ 
+         capabilities.quantized8Performance.powerUsage =
+-            ParseSystemProperty(g_Quantized8PerformancePowerUsageName, .1f);
++            ParseSystemProperty(g_Quantized8PerformancePowerUsageName, 5.0f);
+ 
+         cb(ErrorStatus::NONE, capabilities);
+     }
+     else
+     {
+-        capabilities.float32Performance.execTime      = 0;
+-        capabilities.float32Performance.powerUsage    = 0;
+-        capabilities.quantized8Performance.execTime   = 0;
+-        capabilities.quantized8Performance.powerUsage = 0;
++        capabilities.float32Performance.execTime      = 5.0f;
++        capabilities.float32Performance.powerUsage    = 5.0f;
++        capabilities.quantized8Performance.execTime   = 5.0f;
++        capabilities.quantized8Performance.powerUsage = 5.0f;
+ 
+         cb(ErrorStatus::DEVICE_UNAVAILABLE, capabilities);
+     }
+diff --git a/1.1/ArmnnDriverImpl.cpp b/1.1/ArmnnDriverImpl.cpp
+index 812e4ea..42ec918 100644
+--- a/1.1/ArmnnDriverImpl.cpp
++++ b/1.1/ArmnnDriverImpl.cpp
+@@ -33,29 +33,29 @@ Return<void> ArmnnDriverImpl::getCapabilities_1_1(const armnn::IRuntimePtr& runt
+     if (runtime)
+     {
+         capabilities.float32Performance.execTime =
+-            ParseSystemProperty(g_Float32PerformanceExecTimeName, .1f);
++            ParseSystemProperty(g_Float32PerformanceExecTimeName, 5.0f);
+ 
+         capabilities.float32Performance.powerUsage =
+-            ParseSystemProperty(g_Float32PerformancePowerUsageName, .1f);
++            ParseSystemProperty(g_Float32PerformancePowerUsageName, 5.0f);
+ 
+         capabilities.quantized8Performance.execTime =
+-            ParseSystemProperty(g_Quantized8PerformanceExecTimeName, .1f);
++            ParseSystemProperty(g_Quantized8PerformanceExecTimeName, 5.0f);
+ 
+         capabilities.quantized8Performance.powerUsage =
+-            ParseSystemProperty(g_Quantized8PerformancePowerUsageName, .1f);
++            ParseSystemProperty(g_Quantized8PerformancePowerUsageName, 5.0f);
+ 
+         capabilities.relaxedFloat32toFloat16Performance.execTime =
+-            ParseSystemProperty(g_RelaxedFloat32toFloat16PerformanceExecTime, .1f);
++            ParseSystemProperty(g_RelaxedFloat32toFloat16PerformanceExecTime, 5.0f);
+ 
+         cb(ErrorStatus::NONE, capabilities);
+     }
+     else
+     {
+-        capabilities.float32Performance.execTime                 = 0;
+-        capabilities.float32Performance.powerUsage               = 0;
+-        capabilities.quantized8Performance.execTime              = 0;
+-        capabilities.quantized8Performance.powerUsage            = 0;
+-        capabilities.relaxedFloat32toFloat16Performance.execTime = 0;
++        capabilities.float32Performance.execTime                 = 5.0f;
++        capabilities.float32Performance.powerUsage               = 5.0f;
++        capabilities.quantized8Performance.execTime              = 5.0f;
++        capabilities.quantized8Performance.powerUsage            = 5.0f;
++        capabilities.relaxedFloat32toFloat16Performance.execTime = 5.0f;
+ 
+         cb(ErrorStatus::DEVICE_UNAVAILABLE, capabilities);
+     }
+diff --git a/1.2/ArmnnDriverImpl.cpp b/1.2/ArmnnDriverImpl.cpp
+index f39d6c2..3cf4e8a 100644
+--- a/1.2/ArmnnDriverImpl.cpp
++++ b/1.2/ArmnnDriverImpl.cpp
+@@ -229,7 +229,7 @@ Return<void> ArmnnDriverImpl::getCapabilities_1_2(const armnn::IRuntimePtr& runt
+ 
+     V1_2::Capabilities capabilities;
+ 
+-    float defaultValue = .1f;
++    float defaultValue = 5.0f;
+ 
+     if (runtime)
+     {
+@@ -309,11 +309,11 @@ Return<void> ArmnnDriverImpl::getCapabilities_1_2(const armnn::IRuntimePtr& runt
+     }
+     else
+     {
+-        capabilities.relaxedFloat32toFloat16PerformanceScalar.execTime = 0;
+-        capabilities.relaxedFloat32toFloat16PerformanceTensor.execTime = 0;
++        capabilities.relaxedFloat32toFloat16PerformanceScalar.execTime = 5.0f;
++        capabilities.relaxedFloat32toFloat16PerformanceTensor.execTime = 5.0f;
+ 
+         // Set the base value for all operand types
+-        capabilities.operandPerformance = nonExtensionOperandPerformance({0.f, 0.0f});
++        capabilities.operandPerformance = nonExtensionOperandPerformance({5.0f, 5.0f});
+ 
+         cb(ErrorStatus::DEVICE_UNAVAILABLE, capabilities);
+     }
+-- 
+1.9.1
+
