@@ -17,13 +17,18 @@ DEPENDS += "zlib"
 DEPENDS += "protobuf"
 DEPENDS += "protobuf-native"
 DEPENDS += "jpeg"
-DEPENDS += "adsprpc"
 DEPENDS += "xnnpack"
-DEPENDS += "adreno200"
+DEPENDS += "${@bb.utils.contains('COMBINED_FEATURES', 'qti-cdsp', 'adsprpc', '', d)}"
+DEPENDS += "${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'adreno200', '', d)}"
 DEPENDS += "flatbuffers"
 DEPENDS += "flatbuffers-native"
 
 do_patch[depends] = "curl-native:do_populate_sysroot unzip-native:do_populate_sysroot"
+
+PACKAGECONFIG ??= " \
+${@bb.utils.contains('COMBINED_FEATURES', 'qti-cdsp', 'qti-dsp', '', d)} \
+${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'qti-gpu', '', d)} \
+"
 
 FILESPATH =+ "${WORKSPACE}/external/:"
 SRC_URI = "file://tensorflow"
@@ -35,7 +40,8 @@ EXTRA_OECMAKE += "-DSYSROOT_BINDIR_NATIVE=${STAGING_BINDIR_NATIVE}"
 EXTRA_OECMAKE += "-DTFLITE_INSTALL_INCDIR=${includedir}"
 EXTRA_OECMAKE += "-DTFLITE_INSTALL_BINDIR=${bindir}"
 EXTRA_OECMAKE += "-DTFLITE_INSTALL_LIBDIR=${libdir}"
-
+PACKAGECONFIG[qti-dsp] = " -DTFLITE_ENABLE_HEXAGON=true ,,,"
+PACKAGECONFIG[qti-gpu] = " -DTFLITE_ENABLE_GPU=1,,,"
 
 FILES_${PN} = "${libdir}/lib*.so ${bindir}/*"
 FILES_${PN}-dev += "${includedir}"
