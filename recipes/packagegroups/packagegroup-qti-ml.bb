@@ -14,6 +14,7 @@ PACKAGES = ' \
 RDEPENDS_packagegroup-qti-ml = ' \
     ${@bb.utils.contains("DISTRO_FEATURES", "tensorflow-lite", "packagegroup-qti-ml-tflite", "", d)} \
     libgomp \
+    libgomp-dev \
     '
 
 RDEPENDS_packagegroup-qti-ml-tflite = " \
