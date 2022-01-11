@@ -1,0 +1,33 @@
+From 2455b3972d280bfff87573b1cbb40f1dd29a13aa Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Fri, 7 Jan 2022 14:47:42 +0200
+Subject: [PATCH 12/12] tensorflow-lite: Use XNNPACK repository from code
+ linaro
+
+- XNNPACK repository needs to be used from code linaro
+in order XNNPACK related fixes to be applied.
+
+Change-Id: I5505bc9f1e12ffbb730c6a65c32b7db6690f6ca3
+---
+ tensorflow/lite/tools/cmake/modules/xnnpack.cmake | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
+index 1cf2dc53dc2..d3ae53776f3 100644
+--- a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
++++ b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
+@@ -21,9 +21,9 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   xnnpack
+-  GIT_REPOSITORY https://github.com/google/XNNPACK
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/XNNPACK
+   # Sync with tensorflow/workspace2.bzl
+-  GIT_TAG 476eb84d6a8e6f8249d5584d30759c6fbdbf791d
++  GIT_TAG ab249a09d9bca22bef20e76d99e6baa3fecacd5d
+   GIT_PROGRESS TRUE
+   PREFIX "${CMAKE_BINARY_DIR}"
+   SOURCE_DIR "${CMAKE_BINARY_DIR}/xnnpack"
+-- 
+2.17.1
+
