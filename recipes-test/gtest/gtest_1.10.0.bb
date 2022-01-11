@@ -10,7 +10,7 @@ PROVIDES += "gmock"
 S = "${WORKDIR}/git"
 SRCREV = "release-1.10.0"
 SRC_URI = "\
-    git://github.com/google/googletest.git;protocol=git; \
+    git://github.com/google/googletest.git;protocol=https; \
     file://0001-Add-pkg-config-support.patch \
 "
 
