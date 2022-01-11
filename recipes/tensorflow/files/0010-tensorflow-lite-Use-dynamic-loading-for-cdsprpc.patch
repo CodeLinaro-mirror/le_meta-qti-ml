@@ -1,0 +1,134 @@
+From 2200211be13e1938ca1358b71cfe251be3c05745 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Tue, 9 Nov 2021 10:10:10 +0000
+Subject: [PATCH 10/12] tensorflow-lite: Use dynamic loading for cdsprpc
+
+- Switch from dynamic linking to dynamic loading for libcdsprpc.so
+
+Change-Id: Iefa2a85df02fc56e00041da65ad00494f64e9398
+---
+ tensorflow/lite/CMakeLists.txt                |  5 +-
+ .../delegates/hexagon/hexagon/hexagon_rpc.cc  | 91 +++++++++++++++++++
+ 2 files changed, 93 insertions(+), 3 deletions(-)
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
+
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+index 11a0e35a9bb..f4a9f62f956 100644
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -389,13 +389,12 @@ add_library(libhexagon_interface SHARED
+   ${TFLITE_DELEGATES_HEXAGON_INT_SRCS}
+ )
+ 
++target_link_libraries(libhexagon_interface ${CMAKE_DL_LIBS})
++
+ install(TARGETS libhexagon_interface
+   LIBRARY
+ )
+ 
+-# link the libraries to the executable
+-target_link_libraries (libhexagon_interface libcdsprpc.so)
+-
+ set_target_properties(libhexagon_interface PROPERTIES PREFIX "")
+ 
+ list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DLINUX")
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
+new file mode 100644
+index 00000000000..29a16823c86
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <dlfcn.h>
++#include "remote.h"
++
++using remote_handle_open_fn = decltype(remote_handle_open);
++using remote_handle_invoke_fn = decltype(remote_handle_invoke);
++using remote_handle_close_fn = decltype(remote_handle_close);
++
++static void *g_handle = nullptr;
++
++static remote_handle_open_fn *g_remote_handle_open = nullptr;
++static remote_handle_invoke_fn *g_remote_handle_invoke = nullptr;
++static remote_handle_close_fn *g_remote_handle_close = nullptr;
++
++int remote_handle_open(const char* name, remote_handle *ph)
++{
++    if (nullptr == g_remote_handle_open) {
++        return -1;
++    }
++    return g_remote_handle_open(name, ph);
++}
++
++int remote_handle_invoke(remote_handle h, uint32_t dwScalars, remote_arg *pra)
++{
++    if (nullptr == g_remote_handle_invoke) {
++        return -1;
++    }
++    return g_remote_handle_invoke(h, dwScalars, pra);
++}
++
++int remote_handle_close(remote_handle h)
++{
++    if (nullptr == g_remote_handle_close) {
++        return -1;
++    }
++    return g_remote_handle_close(h);
++}
++
++static __attribute__((constructor)) void init(void)
++{
++    g_handle = dlopen("libcdsprpc.so", RTLD_LAZY);
++
++    if (nullptr != g_handle) {
++        g_remote_handle_open =
++            reinterpret_cast<remote_handle_open_fn*>(dlsym(g_handle, "remote_handle_open"));
++        g_remote_handle_close =
++            reinterpret_cast<remote_handle_close_fn*>(dlsym(g_handle, "remote_handle_close"));
++        g_remote_handle_invoke =
++            reinterpret_cast<remote_handle_invoke_fn*>(dlsym(g_handle, "remote_handle_invoke"));
++    }
++}
++
++static __attribute__((destructor)) void deinit(void)
++{
++    if (nullptr != g_handle) {
++        dlclose(g_handle);
++    }
++}
+-- 
+2.17.1
+
