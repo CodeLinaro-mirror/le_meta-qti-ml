@@ -10,9 +10,10 @@ PROVIDES += "gmock"
 S = "${WORKDIR}/git"
 SRCREV = "release-1.10.0"
 SRC_URI = "\
-    git://github.com/google/googletest.git;protocol=git; \
+    git://git.codelinaro.org/clo/qsdk/googletest.git;protocol=https;nobranch=1;tag=release-1.10.0 \
     file://0001-Add-pkg-config-support.patch \
 "
+SRC_URI[sha256sum] = "8ee3fb18a5f547e35f76fe3ce773f0a0c789f34291e310cd8217deb9e7478c54"
 
 inherit cmake
 
