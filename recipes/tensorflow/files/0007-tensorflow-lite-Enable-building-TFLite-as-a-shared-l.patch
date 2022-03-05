@@ -1,0 +1,67 @@
+From f3c7f610b738f18ba07372382d5df00a3a0af174 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Tue, 9 Nov 2021 10:09:59 +0000
+Subject: [PATCH 07/14] tensorflow-lite: Enable building TFLite as a shared
+ library
+
+Change-Id: If57c2e5dd6a4591932d44fc1bb4f28d8cf303bf7
+---
+ tensorflow/lite/CMakeLists.txt                 | 9 +++++++--
+ tensorflow/lite/tools/benchmark/CMakeLists.txt | 2 +-
+ 2 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+index de88351d850..a6b85f7f3e9 100644
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -44,7 +44,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+   add_definitions(-DBUILD_TESTING=OFF)
+   add_definitions(-DEIGEN_MPL2_ONLY)
+   add_definitions(-fPIC)
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fno-short-enums -Ofast -Wl,-no-undefined")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fno-short-enums -Ofast -Wl,-ldl,-no-undefined")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+ endif()
+ 
+@@ -231,6 +231,7 @@ populate_tflite_source_vars("core" TFLITE_CORE_SRCS)
+ populate_tflite_source_vars("core/api" TFLITE_CORE_API_SRCS)
+ populate_tflite_source_vars("c" TFLITE_C_SRCS)
+ populate_tflite_source_vars("delegates" TFLITE_DELEGATES_SRCS)
++list(APPEND TFLITE_DELEGATES_SRCS ${TFLITE_SOURCE_DIR}/delegates/utils/simple_delegate.cc)
+ if(TFLITE_ENABLE_GPU)
+   find_package(opencl_headers REQUIRED)
+   find_package(vulkan_headers REQUIRED)
+@@ -460,7 +461,7 @@ include_directories(
+ )
+ 
+ # TFLite library
+-add_library(tensorflow-lite
++add_library(tensorflow-lite SHARED
+   ${TFLITE_CORE_API_SRCS}
+   ${TFLITE_CORE_SRCS}
+   ${TFLITE_C_SRCS}
+@@ -543,6 +544,10 @@ if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER)
+ endif()
+ add_library(tensorflow::tensorflowlite ALIAS tensorflow-lite)
+ 
++install(TARGETS tensorflow-lite
++  LIBRARY
++)
++
+ # The kernel tests.
+ if(TFLITE_KERNEL_TEST)
+   enable_testing()
+diff --git a/tensorflow/lite/tools/benchmark/CMakeLists.txt b/tensorflow/lite/tools/benchmark/CMakeLists.txt
+index a8b4df15a25..a4edbc881a7 100644
+--- a/tensorflow/lite/tools/benchmark/CMakeLists.txt
++++ b/tensorflow/lite/tools/benchmark/CMakeLists.txt
+@@ -91,5 +91,5 @@ target_compile_options(benchmark_model
+     ${TFLITE_BENCHMARK_CC_OPTIONS}
+ )
+ target_link_libraries(benchmark_model
+-    ${TFLITE_BENCHMARK_LIBS} -lrt
++    ${TFLITE_BENCHMARK_LIBS}
+ )
+-- 
+2.17.1
+

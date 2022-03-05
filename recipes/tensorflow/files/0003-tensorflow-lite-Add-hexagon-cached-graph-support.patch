@@ -1,0 +1,2246 @@
+From ce85485520ad62130d1dacfc12c4058097e0d434 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Tue, 9 Nov 2021 10:09:50 +0000
+Subject: [PATCH 03/14] tensorflow-lite: Add hexagon cached graph support
+
+- Add hexagon delegate api trace and store cached graph
+- Add example application for running cached graph
+
+Change-Id: I6d14675e6e2f84e6af8899f327e4c0f687f29343
+---
+ tensorflow/lite/CMakeLists.txt                |  65 ++-
+ .../hexagon/hexagon_implementation.cc         |   9 +
+ .../hexagon/hexagon_nn_api_tracer.cc          | 382 ++++++++++++++++++
+ .../delegates/hexagon/hexagon_nn_api_tracer.h |  44 ++
+ .../hexagon_nn_cached_graph/CMakeLists.txt    |  22 +
+ .../hexagon_nn_cached_graph/hexagon_nn_api.cc | 130 ++++++
+ .../hexagon_nn_cached_graph/hexagon_nn_api.h  |  76 ++++
+ .../hexagon_nn_cached_graph.cc                | 216 ++++++++++
+ .../hexagon_nn_cached_graph.h                 |  76 ++++
+ .../hexagon_nn_cached_graph_descriptors.h     |  60 +++
+ .../hexagon_nn_graph_store.cc                 | 144 +++++++
+ .../hexagon_nn_graph_store.h                  |  64 +++
+ .../hexagon_nn_cached_graph/hexagon_nn_log.h  |  43 ++
+ .../hexagon_nn_tensor.cc                      |  52 +++
+ .../hexagon_nn_tensor.h                       |  54 +++
+ .../hexagon_nn_tensor_dims.cc                 |  54 +++
+ .../hexagon_nn_tensor_dims.h                  |  59 +++
+ .../hexagon_nn_tensor_heap.cc                 |  48 +++
+ .../hexagon_nn_tensor_heap.h                  |  54 +++
+ .../examples/run_cached_graph/CMakeLists.txt  |  19 +
+ .../examples/run_cached_graph/bmp_helper.cc   |  91 +++++
+ .../examples/run_cached_graph/bmp_helper.h    |  41 ++
+ .../run_cached_graph/run_cached_graph.cc      | 194 +++++++++
+ 23 files changed, 1995 insertions(+), 2 deletions(-)
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/CMakeLists.txt
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph_descriptors.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_log.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.h
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.cc
+ create mode 100644 tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.h
+ create mode 100644 tensorflow/lite/examples/run_cached_graph/CMakeLists.txt
+ create mode 100644 tensorflow/lite/examples/run_cached_graph/bmp_helper.cc
+ create mode 100644 tensorflow/lite/examples/run_cached_graph/bmp_helper.h
+ create mode 100644 tensorflow/lite/examples/run_cached_graph/run_cached_graph.cc
+
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+index 1bcc5d5aa00..de88351d850 100644
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -82,6 +82,9 @@ cmake_dependent_option(TFLITE_ENABLE_NNAPI_VERBOSE_VALIDATION "Enable NNAPI verb
+ option(TFLITE_ENABLE_MMAP "Enable MMAP (unsupported on Windows)" ON)
+ option(TFLITE_ENABLE_GPU "Enable GPU" OFF)
+ option(TFLITE_ENABLE_HEXAGON "Enable Hexagon" ON)
++option(TFLITE_ENABLE_HEXAGON_NN_API_TRACER "Enable Hexagon API tracer" OFF)
++option(TFLITE_ENABLE_HEXAGON_NN_API_TRACER_OUTPUT_DUMP "Enable Hexagon API tracer output dump" OFF)
++option(TFLITE_ENABLE_HEXAGON_NN_API_TRACER_INPUT_DUMP "Enable Hexagon API tracer input dump" OFF)
+ option(TFLITE_ENABLE_XNNPACK "Enable XNNPACK backend" ON)
+ 
+ option(TFLITE_KERNEL_TEST "Enable tflite kernel unit test" OFF)
+@@ -347,6 +350,9 @@ if(TFLITE_ENABLE_XNNPACK)
+   )
+ endif()
+ 
++# The hexagon nn cached graph
++add_subdirectory(${TFLITE_SOURCE_DIR}/delegates/hexagon/hexagon_nn_cached_graph)
++
+ if(TFLITE_ENABLE_HEXAGON)
+   populate_tflite_source_vars(
+     "delegates/hexagon"
+@@ -379,7 +385,15 @@ install(TARGETS libhexagon_interface
+ )
+ 
+ # link the libraries to the executable
+-target_link_libraries (libhexagon_interface libcdsprpc.so)
++add_dependencies(libhexagon_interface hexagon_nn_cached_graph)
++target_link_libraries(libhexagon_interface
++  hexagon_nn_cached_graph
++  cdsprpc
++)
++
++list(APPEND TFLITE_TARGET_DEPENDENCIES
++  hexagon_nn_cached_graph
++)
+ 
+ set_target_properties(libhexagon_interface PROPERTIES PREFIX "")
+ 
+@@ -505,6 +519,28 @@ target_compile_options(tensorflow-lite
+   PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
+   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+ )
++if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER)
++  set(TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS
++    "-DHEXAGON_NN_API_TRACER_ENABLE"
++  )
++  if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER_OUTPUT_DUMP)
++    list(APPEND
++      TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS
++      "-DHEXAGON_NN_API_TRACER_OUTPUT_DUMP_ENABLE"
++    )
++  endif()
++  if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER_INPUT_DUMP)
++    list(APPEND
++      TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS
++      "-DHEXAGON_NN_API_TRACER_INPUT_DUMP_ENABLE"
++    )
++  endif()
++  string (REPLACE ";" " " TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS "${TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS}")
++  target_compile_definitions(tensorflow-lite
++    PRIVATE
++    "${TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS}"
++  )
++endif()
+ add_library(tensorflow::tensorflowlite ALIAS tensorflow-lite)
+ 
+ # The kernel tests.
+@@ -522,6 +558,9 @@ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/label_image)
+ # The multimodel_label_image example.
+ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/multimodel_label_image)
+ 
++# The run_cached_graph example.
++add_subdirectory(${TFLITE_SOURCE_DIR}/examples/run_cached_graph)
++
+ # Python interpreter wrapper.
+ add_library(_pywrap_tensorflow_interpreter_wrapper SHARED EXCLUDE_FROM_ALL
+   ${TFLITE_SOURCE_DIR}/python/interpreter_wrapper/interpreter_wrapper.cc
+@@ -546,4 +585,26 @@ target_link_libraries(_pywrap_tensorflow_interpreter_wrapper
+ target_compile_options(_pywrap_tensorflow_interpreter_wrapper
+   PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
+   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+-)
+\ No newline at end of file
++)
++if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER)
++  set(TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS
++    "-DHEXAGON_NN_API_TRACER_ENABLE"
++  )
++  if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER_OUTPUT_DUMP)
++    list(APPEND
++      TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS
++      "-DHEXAGON_NN_API_TRACER_OUTPUT_DUMP_ENABLE"
++    )
++  endif()
++  if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER_INPUT_DUMP)
++    list(APPEND
++      TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS
++      "-DHEXAGON_NN_API_TRACER_INPUT_DUMP_ENABLE"
++    )
++  endif()
++  string (REPLACE ";" " " TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS "${TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS}")
++  target_compile_definitions(_pywrap_tensorflow_interpreter_wrapper
++    PRIVATE
++    "${TFLITE_ENABLE_HEXAGON_NN_API_TRACER_COMPILE_DEFINITIONS}"
++  )
++endif()
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_implementation.cc b/tensorflow/lite/delegates/hexagon/hexagon_implementation.cc
+index 7149ebe59a2..bef86c8295c 100644
+--- a/tensorflow/lite/delegates/hexagon/hexagon_implementation.cc
++++ b/tensorflow/lite/delegates/hexagon/hexagon_implementation.cc
+@@ -14,6 +14,7 @@ limitations under the License.
+ ==============================================================================*/
+ 
+ #include "tensorflow/lite/delegates/hexagon/hexagon_implementation.h"
++#include "tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.h"
+ 
+ #include <dlfcn.h>
+ #include <fcntl.h>
+@@ -89,7 +90,15 @@ const HexagonNN* HexagonNNImplementation() {
+   if (!hexagon_nn.interface_loaded) {
+     return nullptr;
+   }
++
++#ifdef HEXAGON_NN_API_TRACER_ENABLE
++  static const HexagonNN* hexagon_nn_api_tracer =
++      CreateNewHexagonNNAPITracer(hexagon_nn);
++  return hexagon_nn_api_tracer;
++#else
+   return &hexagon_nn;
++#endif
++
+ }
+ 
+ }  // namespace tflite
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.cc
+new file mode 100644
+index 00000000000..2312306f573
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.cc
+@@ -0,0 +1,382 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include <fstream>
++#include <map>
++#include <memory>
++#include <mutex>
++#include <sstream>
++
++#include "hexagon_nn_api_tracer.h"
++#include "hexagon_nn_graph_store.h"
++#include "tensorflow/lite/tools/logging.h"
++
++#ifdef HEXAGON_NN_API_TRACER_ENABLE_ENTRY_AND_EXIT_POINT_LOGS
++#define HEXAGON_NN_API_TRACER_ENTRY_LOG TFLITE_LOG(INFO) << __func__ << " enter"
++#define HEXAGON_NN_API_TRACER_EXIT_LOG TFLITE_LOG(INFO) << __func__ << " exit"
++#define HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc) \
++  TFLITE_LOG(INFO) << __func__ << " exit rc = " << rc
++#else
++#define HEXAGON_NN_API_TRACER_ENTRY_LOG
++#define HEXAGON_NN_API_TRACER_EXIT_LOG
++#define HEXAGON_NN_API_TRACER_EXIT_RC_LOG
++#endif
++
++namespace tflite {
++
++static const std::string kDumpPath = "/data/tf/";
++
++class HexagonNNAPITracer;
++static std::mutex g_mutex;
++static std::shared_ptr<HexagonNNAPITracer> g_this = nullptr;
++
++class HexagonNNAPITracer {
++ public:
++  HexagonNNAPITracer(HexagonNN& lib_hexagon_nn)
++      : lib_hexagon_nn_(lib_hexagon_nn) {}
++
++  static int hexagon_nn_config(void) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_config();
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_init(hexagon_nn_nn_id* g) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_init(g);
++
++    if (!rc) {
++      std::lock_guard<std::mutex> lock(g_this->mutex_hexagon_api_stores_);
++      g_this->hexagon_api_stores_[*g] = HexagonNNGraphStore::New(*g);
++    }
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_set_powersave_level(unsigned int level) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_set_powersave_level(level);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_set_debug_level(hexagon_nn_nn_id id, int level) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_set_debug_level(id, level);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_prepare(hexagon_nn_nn_id id) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_prepare(id);
++
++    if (!rc) {
++      std::lock_guard<std::mutex> lock(g_this->mutex_hexagon_api_stores_);
++      g_this->hexagon_api_stores_[id] = nullptr;
++    }
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_append_node(
++      hexagon_nn_nn_id id, unsigned int node_id, unsigned int operation,
++      hexagon_nn_padding_type padding, const hexagon_nn_input* inputs,
++      int inputsLen, const hexagon_nn_output* outputs, int outputsLen) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_append_node(
++        id, node_id, operation, padding, inputs, inputsLen, outputs,
++        outputsLen);
++
++    if (!rc) {
++      std::lock_guard<std::mutex> lock(g_this->mutex_hexagon_api_stores_);
++      g_this->hexagon_api_stores_[id]->AppendNode(
++          node_id, operation, padding, inputs, inputsLen, outputs, outputsLen);
++    }
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_append_const_node(
++      hexagon_nn_nn_id id, unsigned int node_id, unsigned int batches,
++      unsigned int height, unsigned int width, unsigned int depth,
++      const unsigned char* data, int dataLen) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_append_const_node(
++        id, node_id, batches, height, width, depth, data, dataLen);
++
++    if (!rc) {
++      std::lock_guard<std::mutex> lock(g_this->mutex_hexagon_api_stores_);
++      g_this->hexagon_api_stores_[id]->AppendConstNode(
++          node_id, batches, height, width, depth, data, dataLen);
++    }
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_execute(
++      hexagon_nn_nn_id id, unsigned int batches_in, unsigned int height_in,
++      unsigned int width_in, unsigned int depth_in,
++      const unsigned char* data_in, int data_inLen, unsigned int* batches_out,
++      unsigned int* height_out, unsigned int* width_out,
++      unsigned int* depth_out, unsigned char* data_out, int data_outLen,
++      unsigned int* data_len_out) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_execute(
++        id, batches_in, height_in, width_in, depth_in, data_in, data_inLen,
++        batches_out, height_out, width_out, depth_out, data_out, data_outLen,
++        data_len_out);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_execute_new(hexagon_nn_nn_id id,
++                                    const hexagon_nn_tensordef* inputs,
++                                    int inputsLen,
++                                    hexagon_nn_tensordef* outputs,
++                                    int outputsLen) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++#ifdef HEXAGON_NN_API_TRACER_INPUT_DUMP_ENABLE
++    for (int i = 0; i < inputsLen; i++) {
++      std::stringstream s;
++      s << kDumpPath << "input_" << i << "_" << inputs[i].batches << "_"
++        << inputs[i].height << "_" << inputs[i].width << "_" << inputs[i].depth
++        << ".data";
++      std::ofstream o(s.str());
++      o.write(reinterpret_cast<char*>(inputs[i].data),
++              inputs[i].data_valid_len);
++    }
++#endif
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_execute_new(
++        id, inputs, inputsLen, outputs, outputsLen);
++
++#ifdef HEXAGON_NN_API_TRACER_OUTPUT_DUMP_ENABLE
++    for (int i = 0; i < outputsLen; i++) {
++      std::stringstream s;
++      s << kDumpPath << "output_" << i << "_" << outputs[i].batches << "_"
++        << outputs[i].height << "_" << outputs[i].width << "_"
++        << outputs[i].depth << ".data";
++      std::ofstream o(s.str());
++      o.write(reinterpret_cast<char*>(outputs[i].data),
++              outputs[i].data_valid_len);
++    }
++#endif
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_teardown(hexagon_nn_nn_id id) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_teardown(id);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_snpprint(hexagon_nn_nn_id id, unsigned char* buf,
++                                 int bufLen) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_snpprint(id, buf, bufLen);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_getlog(hexagon_nn_nn_id id, unsigned char* buf,
++                               int bufLen) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_getlog(id, buf, bufLen);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_get_perfinfo(hexagon_nn_nn_id id,
++                                     hexagon_nn_perfinfo* info_out,
++                                     int info_outLen, unsigned int* n_items) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_get_perfinfo(
++        id, info_out, info_outLen, n_items);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_reset_perfinfo(hexagon_nn_nn_id id,
++                                       unsigned int event) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_reset_perfinfo(id, event);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_op_id_to_name(unsigned int node_id, char* name,
++                                      int nameLen) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_op_id_to_name(node_id, name,
++                                                              nameLen);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static void hexagon_nn_global_teardown(void) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    g_this->lib_hexagon_nn_.hexagon_nn_global_teardown();
++
++    HEXAGON_NN_API_TRACER_EXIT_LOG;
++  }
++
++  static void hexagon_nn_global_init(void) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    g_this->lib_hexagon_nn_.hexagon_nn_global_init();
++
++    HEXAGON_NN_API_TRACER_EXIT_LOG;
++  }
++
++  static bool hexagon_nn_is_device_supported() {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    bool rc = g_this->lib_hexagon_nn_.hexagon_nn_is_device_supported();
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_hexagon_interface_version(void) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_hexagon_interface_version();
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++  static int hexagon_nn_version(int* ver) {
++    HEXAGON_NN_API_TRACER_ENTRY_LOG;
++
++    int rc = g_this->lib_hexagon_nn_.hexagon_nn_version(ver);
++
++    HEXAGON_NN_API_TRACER_EXIT_RC_LOG(rc);
++
++    return rc;
++  }
++
++ private:
++  const HexagonNN lib_hexagon_nn_;
++  std::mutex mutex_hexagon_api_stores_;
++  std::map<hexagon_nn_nn_id, std::shared_ptr<HexagonNNGraphStore>>
++      hexagon_api_stores_;
++};
++
++const HexagonNN* CreateNewHexagonNNAPITracer(HexagonNN& lib_hexagon_nn) {
++  std::lock_guard<std::mutex> lock(g_mutex);
++  if (g_this == nullptr) {
++    g_this = std::make_shared<HexagonNNAPITracer>(lib_hexagon_nn);
++  }
++  static HexagonNN my_hexagon_nn{
++      .hexagon_nn_config = g_this->hexagon_nn_config,
++      .hexagon_nn_init = g_this->hexagon_nn_init,
++      .hexagon_nn_set_powersave_level = g_this->hexagon_nn_set_powersave_level,
++      .hexagon_nn_set_debug_level = g_this->hexagon_nn_set_debug_level,
++      .hexagon_nn_prepare = g_this->hexagon_nn_prepare,
++      .hexagon_nn_append_node = g_this->hexagon_nn_append_node,
++      .hexagon_nn_append_const_node = g_this->hexagon_nn_append_const_node,
++      .hexagon_nn_execute = g_this->hexagon_nn_execute,
++      .hexagon_nn_execute_new = g_this->hexagon_nn_execute_new,
++      .hexagon_nn_teardown = g_this->hexagon_nn_teardown,
++      .hexagon_nn_snpprint = g_this->hexagon_nn_snpprint,
++      .hexagon_nn_getlog = g_this->hexagon_nn_getlog,
++      .hexagon_nn_get_perfinfo = g_this->hexagon_nn_get_perfinfo,
++      .hexagon_nn_reset_perfinfo = g_this->hexagon_nn_reset_perfinfo,
++      .hexagon_nn_op_id_to_name = g_this->hexagon_nn_op_id_to_name,
++      .hexagon_nn_global_teardown = g_this->hexagon_nn_global_teardown,
++      .hexagon_nn_global_init = g_this->hexagon_nn_global_init,
++      .hexagon_nn_is_device_supported = g_this->hexagon_nn_is_device_supported,
++      .hexagon_nn_hexagon_interface_version =
++          g_this->hexagon_nn_hexagon_interface_version,
++      .hexagon_nn_version = g_this->hexagon_nn_version,
++  };
++
++  return &my_hexagon_nn;
++}
++
++}  // namespace tflite
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.h
+new file mode 100644
+index 00000000000..ef0a48d2374
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_api_tracer.h
+@@ -0,0 +1,44 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include "tensorflow/lite/delegates/hexagon/hexagon_implementation.h"
++
++namespace tflite {
++
++const HexagonNN* CreateNewHexagonNNAPITracer(HexagonNN& lib_hexagon_nn);
++
++}  // namespace tflite
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/CMakeLists.txt b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/CMakeLists.txt
+new file mode 100644
+index 00000000000..6a6511b8c9d
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/CMakeLists.txt
+@@ -0,0 +1,22 @@
++set (HEXAGON_NN_CACHED_GRAPH_TARGET_NAME hexagon_nn_cached_graph)
++
++file(GLOB_RECURSE
++  HEXAGON_NN_CACHED_GRAPH_SRCS
++  "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
++)
++
++add_library(${HEXAGON_NN_CACHED_GRAPH_TARGET_NAME}
++  STATIC
++  EXCLUDE_FROM_ALL
++  ${HEXAGON_NN_CACHED_GRAPH_SRCS}
++)
++
++target_include_directories(${HEXAGON_NN_CACHED_GRAPH_TARGET_NAME}
++  PUBLIC
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../hexagon>
++)
++
++target_link_libraries(${HEXAGON_NN_CACHED_GRAPH_TARGET_NAME}
++  dl
++)
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.cc
+new file mode 100644
+index 00000000000..489651eb3f9
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.cc
+@@ -0,0 +1,130 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include <dlfcn.h>
++
++#include "hexagon_nn_api.h"
++#include "hexagon_nn_log.h"
++
++std::mutex HexagonNNApi::mtx_instance_;
++std::shared_ptr<const HexagonNNApi> HexagonNNApi::instance_;
++
++std::shared_ptr<const HexagonNNApi> HexagonNNApi::New() {
++  std::lock_guard<std::mutex> lock(HexagonNNApi::mtx_instance_);
++  if (instance_) {
++    return instance_;
++  }
++
++  void* lib_handle = dlopen("libhexagon_interface.so", RTLD_LAZY | RTLD_LOCAL);
++  if (lib_handle == nullptr) {
++    HEX_NN_ERR << "Failed to load libhexagon_interface.so : " << dlerror();
++    return nullptr;
++  }
++
++  hexagon_nn_version_fn* hexagon_nn_version =
++      reinterpret_cast<hexagon_nn_version_fn*>(
++          dlsym(lib_handle, "hexagon_nn_version"));
++  if (hexagon_nn_version == nullptr) {
++    HEX_NN_ERR << "Failed to load hexagon_nn_version : " << dlerror();
++    dlclose(lib_handle);
++    return nullptr;
++  }
++
++  hexagon_nn_config_fn* hexagon_nn_config =
++      reinterpret_cast<hexagon_nn_config_fn*>(
++          dlsym(lib_handle, "hexagon_nn_config"));
++  if (hexagon_nn_config == nullptr) {
++    HEX_NN_ERR << "Failed to load hexagon_nn_config : " << dlerror();
++    dlclose(lib_handle);
++    return nullptr;
++  }
++
++  hexagon_nn_init_fn* hexagon_nn_init = reinterpret_cast<hexagon_nn_init_fn*>(
++      dlsym(lib_handle, "hexagon_nn_init"));
++  if (hexagon_nn_init == nullptr) {
++    HEX_NN_ERR << "Failed to load hexagon_nn_init : " << dlerror();
++    dlclose(lib_handle);
++    return nullptr;
++  }
++
++  hexagon_nn_populate_graph_fn* hexagon_nn_populate_graph =
++      reinterpret_cast<hexagon_nn_populate_graph_fn*>(
++          dlsym(lib_handle, "hexagon_nn_populate_graph"));
++  if (hexagon_nn_populate_graph == nullptr) {
++    HEX_NN_ERR << "Failed to load hexagon_nn_populate_graph : " << dlerror();
++    dlclose(lib_handle);
++    return nullptr;
++  }
++
++  hexagon_nn_teardown_fn* hexagon_nn_teardown =
++      reinterpret_cast<hexagon_nn_teardown_fn*>(
++          dlsym(lib_handle, "hexagon_nn_teardown"));
++  if (hexagon_nn_teardown == nullptr) {
++    HEX_NN_ERR << "Failed to load hexagon_nn_teardown : " << dlerror();
++    dlclose(lib_handle);
++    return nullptr;
++  }
++
++  hexagon_nn_execute_new_fn* hexagon_nn_execute_new =
++      reinterpret_cast<hexagon_nn_execute_new_fn*>(
++          dlsym(lib_handle, "hexagon_nn_execute_new"));
++  if (hexagon_nn_execute_new == nullptr) {
++    HEX_NN_ERR << "Failed to load hexagon_nn_execute_new : " << dlerror();
++    dlclose(lib_handle);
++    return nullptr;
++  }
++
++  std::shared_ptr<HexagonNNApi> sp(new HexagonNNApi(
++      lib_handle, hexagon_nn_version, hexagon_nn_config, hexagon_nn_init,
++      hexagon_nn_populate_graph, hexagon_nn_teardown, hexagon_nn_execute_new));
++  return sp;
++}
++
++HexagonNNApi::~HexagonNNApi() { dlclose(lib_handle_); }
++
++HexagonNNApi::HexagonNNApi(
++    void* lib_handle, hexagon_nn_version_fn* hexagon_nn_version,
++    hexagon_nn_config_fn* hexagon_nn_config,
++    hexagon_nn_init_fn* hexagon_nn_init,
++    hexagon_nn_populate_graph_fn* hexagon_nn_populate_graph,
++    hexagon_nn_teardown_fn* hexagon_nn_teardown,
++    hexagon_nn_execute_new_fn* hexagon_nn_execute_new)
++    : lib_handle_(lib_handle),
++      hexagon_nn_version_(hexagon_nn_version),
++      hexagon_nn_config_(hexagon_nn_config),
++      hexagon_nn_init_(hexagon_nn_init),
++      hexagon_nn_populate_graph_(hexagon_nn_populate_graph),
++      hexagon_nn_teardown_(hexagon_nn_teardown),
++      hexagon_nn_execute_new_(hexagon_nn_execute_new) {}
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.h
+new file mode 100644
+index 00000000000..acb0cd55deb
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_api.h
+@@ -0,0 +1,76 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <memory>
++#include <mutex>
++
++#include "hexagon_nn.h"
++
++using hexagon_nn_version_fn = decltype(hexagon_nn_version);
++using hexagon_nn_config_fn = decltype(hexagon_nn_config);
++using hexagon_nn_init_fn = decltype(hexagon_nn_init);
++using hexagon_nn_populate_graph_fn = decltype(hexagon_nn_populate_graph);
++using hexagon_nn_teardown_fn = decltype(hexagon_nn_teardown);
++using hexagon_nn_execute_new_fn = decltype(hexagon_nn_execute_new);
++
++class HexagonNNApi {
++ public:
++  static std::shared_ptr<const HexagonNNApi> New();
++
++  ~HexagonNNApi();
++
++ private:
++  HexagonNNApi(void *lib_handle, hexagon_nn_version_fn *hexagon_nn_version,
++               hexagon_nn_config_fn *hexagon_nn_config,
++               hexagon_nn_init_fn *hexagon_nn_init,
++               hexagon_nn_populate_graph_fn *hexagon_nn_populate_graph,
++               hexagon_nn_teardown_fn *hexagon_nn_teardown,
++               hexagon_nn_execute_new_fn *hexagon_nn_execute_new);
++
++ public:
++  const hexagon_nn_version_fn *hexagon_nn_version_;
++  const hexagon_nn_config_fn *hexagon_nn_config_;
++  const hexagon_nn_init_fn *hexagon_nn_init_;
++  const hexagon_nn_populate_graph_fn *hexagon_nn_populate_graph_;
++  const hexagon_nn_teardown_fn *hexagon_nn_teardown_;
++  const hexagon_nn_execute_new_fn *hexagon_nn_execute_new_;
++
++ private:
++  void *lib_handle_;
++  static std::mutex mtx_instance_;
++  static std::shared_ptr<const HexagonNNApi> instance_;
++};
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.cc
+new file mode 100644
+index 00000000000..ce09466809c
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.cc
+@@ -0,0 +1,216 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include "hexagon_nn_cached_graph.h"
++#include "hexagon_nn.h"
++#include "hexagon_nn_cached_graph_descriptors.h"
++#include "hexagon_nn_log.h"
++#include "hexagon_nn_ops.h"
++
++std::shared_ptr<HexagonNNCachedGraph> HexagonNNCachedGraph::New(
++    const std::vector<uint8_t>& cached_graph) {
++  auto hexagon_nn_api = HexagonNNApi::New();
++
++  int ver;
++  int rc = hexagon_nn_api->hexagon_nn_version_(&ver);
++  if (0 != rc) {
++    HEX_NN_ERR << "hexagon_nn_version failed. Error: " << rc << std::endl;
++    return nullptr;
++  }
++
++  HEX_NN_MSG << "Using hexagon nn version 0x" << std::hex << ver << std::dec
++             << std::endl;
++
++  rc = hexagon_nn_api->hexagon_nn_config_();
++  if (0 != rc) {
++    HEX_NN_ERR << "hexagon_nn_config failed. Error: " << rc << std::endl;
++    return nullptr;
++  }
++
++  int id;
++  rc = hexagon_nn_api->hexagon_nn_init_(&id);
++  if (0 != rc) {
++    HEX_NN_ERR << "hexagon_nn_init failed. Error: " << rc << std::endl;
++    return nullptr;
++  }
++
++  rc = hexagon_nn_api->hexagon_nn_populate_graph_(id, cached_graph.data(),
++                                                  cached_graph.size());
++  if (0 != rc) {
++    HEX_NN_ERR << "hexagon_nn_populate_graph failed. Error: " << rc
++               << std::endl;
++    rc = hexagon_nn_api->hexagon_nn_teardown_(id);
++    if (0 != rc) {
++      HEX_NN_ERR << "hexagon_nn_teardown failed. Error: " << rc << std::endl;
++    }
++    return nullptr;
++  }
++
++  std::shared_ptr<HexagonNNCachedGraph> sp(
++      new HexagonNNCachedGraph(id, cached_graph, hexagon_nn_api));
++  return sp;
++}
++
++HexagonNNCachedGraph::HexagonNNCachedGraph(
++    int id, const std::vector<uint8_t>& cached_graph,
++    std::shared_ptr<const HexagonNNApi>& hexagon_nn_api)
++    : in_tensors_(ParseInputTensorDims(cached_graph)),
++      out_tensors_(ParseOutputTensorDims(cached_graph)),
++      id_(id),
++      hexagon_nn_api_(hexagon_nn_api) {}
++
++HexagonNNCachedGraph::~HexagonNNCachedGraph() {
++  int rc = hexagon_nn_api_->hexagon_nn_teardown_(id_);
++  if (0 != rc) {
++    HEX_NN_ERR << "hexagon_nn_teardown failed. Error: " << rc << std::endl;
++  }
++}
++
++std::vector<std::shared_ptr<const HexagonNNTensorDims>>
++HexagonNNCachedGraph::GetInputTensorDims() const {
++  return in_tensors_;
++}
++
++std::vector<std::shared_ptr<const HexagonNNTensorDims>>
++HexagonNNCachedGraph::GetOutputTensorDims() const {
++  return out_tensors_;
++}
++
++int HexagonNNCachedGraph::Process(
++    std::vector<std::shared_ptr<const HexagonNNTensor>>& in,
++    std::vector<std::shared_ptr<const HexagonNNTensor>>& out) const {
++  hexagon_nn_tensordef inputs[in.size()];
++  for (int i = 0; i < in.size(); i++) {
++    inputs[i] = in[i]->Export();
++  }
++
++  hexagon_nn_tensordef outputs[out.size()];
++  for (int i = 0; i < out.size(); i++) {
++    outputs[i] = out[i]->Export();
++  }
++
++  int rc = hexagon_nn_api_->hexagon_nn_execute_new_(id_, inputs, in.size(),
++                                                    outputs, out.size());
++  if (0 != rc) {
++    HEX_NN_ERR << "hexagon_nn_execute_new failed. Error: " << rc << std::endl;
++    return -ENOEXEC;
++  }
++
++  return 0;
++}
++
++std::vector<std::shared_ptr<const HexagonNNTensorDims>>
++HexagonNNCachedGraph::ParseInputTensorDims(
++    const std::vector<uint8_t>& cached_graph) const {
++  std::vector<std::shared_ptr<const HexagonNNTensorDims>> rc;
++
++  const uint8_t* p = cached_graph.data();
++  int size = cached_graph.size();
++
++  while (size > sizeof(HexagonNNNode)) {
++    const HexagonNNNode* n = reinterpret_cast<const HexagonNNNode*>(p);
++    if ((1 == n->op) && (OP_INPUT == n->operation)) {
++      int cnt_in = n->inputsLen / sizeof(hexagon_nn_input);
++      int cnt_out = n->outputsLen / sizeof(hexagon_nn_output);
++      const hexagon_nn_output* o = reinterpret_cast<const hexagon_nn_output*>(
++          p + sizeof(HexagonNNNode) + n->inputsLen);
++      for (int i = 0; i < cnt_out; i++, o++) {
++        rc.push_back(HexagonNNTensorDims::New(
++            o->max_sizes[0], o->rank > 1 ? o->max_sizes[1] : 1,
++            o->rank > 2 ? o->max_sizes[2] : 1,
++            o->rank > 3 ? o->max_sizes[3] : 1, o->elementsize));
++      }
++    }
++
++    p += n->packet_size;
++    size -= n->packet_size;
++  }
++
++  return rc;
++}
++
++std::vector<std::shared_ptr<const HexagonNNTensorDims>>
++HexagonNNCachedGraph::ParseOutputTensorDims(
++    const std::vector<uint8_t>& cached_graph) const {
++  std::vector<std::shared_ptr<const HexagonNNTensorDims>> rc;
++
++  const uint8_t* p = cached_graph.data();
++  int size = cached_graph.size();
++
++  std::vector<unsigned int> outputs;
++  std::vector<unsigned int> output_idxs;
++  while (size > sizeof(HexagonNNNode)) {
++    const HexagonNNNode* n = reinterpret_cast<const HexagonNNNode*>(p);
++    if ((1 == n->op) && (OP_OUTPUT == n->operation)) {
++      int cnt_in = n->inputsLen / sizeof(hexagon_nn_input);
++      const hexagon_nn_input* i =
++          reinterpret_cast<const hexagon_nn_input*>(p + sizeof(HexagonNNNode));
++      while (cnt_in-- > 0) {
++        outputs.push_back(i->src_id);
++        output_idxs.push_back(i->output_idx);
++        i++;
++      }
++    }
++
++    p += n->packet_size;
++    size -= n->packet_size;
++  }
++
++  p = cached_graph.data();
++  size = cached_graph.size();
++  while (size > sizeof(HexagonNNNode)) {
++    const HexagonNNNode* n = reinterpret_cast<const HexagonNNNode*>(p);
++    if (1 == n->op) {
++      for (int i = 0; i < outputs.size(); i++) {
++        if (outputs[i] == n->node_id) {
++          const hexagon_nn_output* o =
++              reinterpret_cast<const hexagon_nn_output*>(
++                  p + sizeof(HexagonNNNode) + n->inputsLen);
++          o += output_idxs[i];
++
++          rc.push_back(HexagonNNTensorDims::New(
++              o->max_sizes[0], o->rank > 1 ? o->max_sizes[1] : 1,
++              o->rank > 2 ? o->max_sizes[2] : 1,
++              o->rank > 3 ? o->max_sizes[3] : 1, o->elementsize));
++        }
++      }
++    }
++
++    p += n->packet_size;
++    size -= n->packet_size;
++  }
++
++  return rc;
++}
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.h
+new file mode 100644
+index 00000000000..2cde017dd07
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph.h
+@@ -0,0 +1,76 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <memory>
++#include <vector>
++
++#include "hexagon_nn_api.h"
++#include "hexagon_nn_tensor.h"
++#include "hexagon_nn_tensor_dims.h"
++
++class HexagonNNCachedGraph {
++ public:
++  static std::shared_ptr<HexagonNNCachedGraph> New(
++      const std::vector<uint8_t> &cached_graph);
++
++  ~HexagonNNCachedGraph();
++
++  std::vector<std::shared_ptr<const HexagonNNTensorDims>> GetInputTensorDims()
++      const;
++  std::vector<std::shared_ptr<const HexagonNNTensorDims>> GetOutputTensorDims()
++      const;
++
++  int Process(std::vector<std::shared_ptr<const HexagonNNTensor>> &in,
++              std::vector<std::shared_ptr<const HexagonNNTensor>> &out) const;
++
++ private:
++  HexagonNNCachedGraph(int id, const std::vector<uint8_t> &cached_graph,
++                       std::shared_ptr<const HexagonNNApi> &hexagon_nn_api);
++
++  std::vector<std::shared_ptr<const HexagonNNTensorDims>> ParseInputTensorDims(
++      const std::vector<uint8_t> &cached_graph) const;
++  std::vector<std::shared_ptr<const HexagonNNTensorDims>> ParseOutputTensorDims(
++      const std::vector<uint8_t> &cached_graph) const;
++
++ public:
++  const std::vector<std::shared_ptr<const HexagonNNTensorDims>> in_tensors_;
++  const std::vector<std::shared_ptr<const HexagonNNTensorDims>> out_tensors_;
++
++ private:
++  const int id_;
++  std::shared_ptr<const HexagonNNApi> hexagon_nn_api_;
++};
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph_descriptors.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph_descriptors.h
+new file mode 100644
+index 00000000000..cb50ca725d2
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_cached_graph_descriptors.h
+@@ -0,0 +1,60 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include "hexagon_nn.h"
++
++struct HexagonNNConstNode {
++  unsigned int op;
++  unsigned int packet_size;
++  unsigned int node_id;
++  unsigned int batches;
++  unsigned int height;
++  unsigned int width;
++  unsigned int depth;
++  unsigned int dataLen;
++};
++
++struct HexagonNNNode {
++  unsigned int op;
++  unsigned int packet_size;
++  unsigned int node_id;
++  unsigned int operation;
++  hexagon_nn_padding_type padding;
++  unsigned int inputsLen;
++  unsigned int outputsLen;
++  unsigned int struct_padding_for_8_byte_alignment;
++};
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.cc
+new file mode 100644
+index 00000000000..0b1506d0407
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.cc
+@@ -0,0 +1,144 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include <string>
++
++#include "hexagon_nn_cached_graph_descriptors.h"
++#include "hexagon_nn_graph_store.h"
++#include "hexagon_nn_log.h"
++
++static const std::string kDumpPath = "/data/tf/";
++
++#define ALIGN8(x) (((x) + 7) & (~7ul))
++
++static const char kDummyBytes[7]{0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
++
++HexagonNNGraphStore::HexagonNNGraphStore(hexagon_nn_nn_id id)
++    : file_(std::ofstream(kDumpPath + "graph_" + std::to_string(id) +
++                          ".cache")) {}
++
++std::shared_ptr<HexagonNNGraphStore> HexagonNNGraphStore::New(
++    hexagon_nn_nn_id id) {
++  std::shared_ptr<HexagonNNGraphStore> sp(new HexagonNNGraphStore(id));
++  return sp;
++}
++
++HexagonNNGraphStore::~HexagonNNGraphStore() {}
++
++void HexagonNNGraphStore::AppendNode(
++    unsigned int node_id, unsigned int operation,
++    hexagon_nn_padding_type padding, const hexagon_nn_input* inputs,
++    int inputsLen, const hexagon_nn_output* outputs, int outputsLen) {
++  if (!file_.is_open()) {
++    HEX_NN_ERR << "Nodes output file is not opened";
++    return;
++  }
++
++  unsigned int input_size = sizeof(hexagon_nn_input);
++  unsigned int input_size_aligned = ALIGN8(input_size);
++  unsigned int output_size = sizeof(hexagon_nn_output);
++  unsigned int output_size_aligned = ALIGN8(output_size);
++
++  HexagonNNNode n{.op = 1,
++                  .packet_size = 0,
++                  .node_id = node_id,
++                  .operation = operation,
++                  .padding = padding,
++                  .inputsLen = inputsLen * input_size_aligned,
++                  .outputsLen = outputsLen * output_size_aligned};
++
++  unsigned int packet_const_size = sizeof(n);
++  unsigned int packet_const_size_aligned = ALIGN8(packet_const_size);
++
++  n.packet_size = packet_const_size_aligned + inputsLen * input_size_aligned +
++                  outputsLen * output_size_aligned;
++
++  unsigned int dummy_bytes = packet_const_size_aligned - packet_const_size;
++  file_.write(reinterpret_cast<const char*>(&n), packet_const_size);
++  if (dummy_bytes > 0) {
++    file_.write(kDummyBytes, dummy_bytes);
++  }
++
++  dummy_bytes = input_size_aligned - input_size;
++  for (int i = 0; i < inputsLen; i++) {
++    file_.write(reinterpret_cast<const char*>(&inputs[i]), input_size);
++    if (dummy_bytes > 0) {
++      file_.write(kDummyBytes, dummy_bytes);
++    }
++  }
++
++  dummy_bytes = output_size_aligned - output_size;
++  for (int i = 0; i < outputsLen; i++) {
++    file_.write(reinterpret_cast<const char*>(&outputs[i]), output_size);
++    if (dummy_bytes > 0) {
++      file_.write(kDummyBytes, dummy_bytes);
++    }
++  }
++}
++
++void HexagonNNGraphStore::AppendConstNode(
++    unsigned int node_id, unsigned int batches, unsigned int height,
++    unsigned int width, unsigned int depth, const unsigned char* data,
++    int dataLen) {
++  if (!file_.is_open()) {
++    HEX_NN_ERR << "Const output file is not opened";
++    return;
++  }
++
++  HexagonNNConstNode c{.op = 2,
++                       .packet_size = 0,
++                       .node_id = node_id,
++                       .batches = batches,
++                       .height = height,
++                       .width = width,
++                       .depth = depth,
++                       .dataLen = static_cast<unsigned int>(dataLen)};
++
++  unsigned int packet_const_size = sizeof(c);
++  unsigned int packet_const_size_aligned = ALIGN8(packet_const_size);
++  c.packet_size = packet_const_size_aligned + ALIGN8(dataLen);
++
++  unsigned int dummy_bytes = packet_const_size_aligned - packet_const_size;
++  file_.write(reinterpret_cast<const char*>(&c), packet_const_size);
++  if (dummy_bytes > 0) {
++    file_.write(kDummyBytes, dummy_bytes);
++  }
++
++  dummy_bytes = ALIGN8(dataLen) - dataLen;
++  file_.write(reinterpret_cast<const char*>(data), dataLen);
++  if (dummy_bytes > 0) {
++    file_.write(kDummyBytes, dummy_bytes);
++  }
++}
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.h
+new file mode 100644
+index 00000000000..2bc8f0aa388
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_graph_store.h
+@@ -0,0 +1,64 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <fstream>
++#include <memory>
++
++#include "hexagon_nn.h"
++
++class HexagonNNGraphStore {
++ public:
++  static std::shared_ptr<HexagonNNGraphStore> New(hexagon_nn_nn_id id);
++
++  ~HexagonNNGraphStore();
++
++  void AppendNode(unsigned int node_id, unsigned int operation,
++                  hexagon_nn_padding_type padding,
++                  const hexagon_nn_input* inputs, int inputsLen,
++                  const hexagon_nn_output* outputs, int outputsLen);
++
++  void AppendConstNode(unsigned int node_id, unsigned int batches,
++                       unsigned int height, unsigned int width,
++                       unsigned int depth, const unsigned char* data,
++                       int dataLen);
++
++ private:
++  HexagonNNGraphStore(hexagon_nn_nn_id id);
++
++ private:
++  std::ofstream file_;
++};
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_log.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_log.h
+new file mode 100644
+index 00000000000..cc44a520d2e
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_log.h
+@@ -0,0 +1,43 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <iostream>
++#include <optional>
++
++#define HEX_NN_MSG std::cout
++#define HEX_NN_ERR std::cerr << "Error: "
++#define HEX_NN_INFO std::cout << "Info: "
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.cc
+new file mode 100644
+index 00000000000..489b1e08c33
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.cc
+@@ -0,0 +1,52 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include "hexagon_nn_tensor.h"
++
++HexagonNNTensor::HexagonNNTensor(
++    std::shared_ptr<const HexagonNNTensorDims>& dims, const uint8_t* data)
++    : dims_(dims), data_(data) {}
++
++const hexagon_nn_tensordef HexagonNNTensor::Export() const {
++  hexagon_nn_tensordef rc{.batches = dims_->batches_,
++                          .height = dims_->height_,
++                          .width = dims_->width_,
++                          .depth = dims_->depth_,
++                          .data = const_cast<unsigned char*>(data_),
++                          .dataLen = static_cast<int>(dims_->size_),
++                          .data_valid_len = dims_->size_};
++
++  return rc;
++}
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.h
+new file mode 100644
+index 00000000000..8ebcb35df1f
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor.h
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <memory>
++
++#include "hexagon_nn.h"
++#include "hexagon_nn_tensor_dims.h"
++
++class HexagonNNTensor {
++ public:
++  const hexagon_nn_tensordef Export() const;
++
++ protected:
++  HexagonNNTensor(std::shared_ptr<const HexagonNNTensorDims>& dims,
++                  const uint8_t* data);
++
++ public:
++  std::shared_ptr<const HexagonNNTensorDims> dims_;
++  const uint8_t* data_;
++};
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.cc
+new file mode 100644
+index 00000000000..24e34fb964d
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.cc
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include "hexagon_nn_tensor_dims.h"
++
++std::shared_ptr<const HexagonNNTensorDims> HexagonNNTensorDims::New(
++    uint32_t batches, uint32_t height, uint32_t width, uint32_t depth,
++    uint32_t element_size) {
++  std::shared_ptr<const HexagonNNTensorDims> sp(
++      new HexagonNNTensorDims(batches, height, width, depth, element_size));
++  return sp;
++}
++
++HexagonNNTensorDims::HexagonNNTensorDims(uint32_t batches, uint32_t height,
++                                         uint32_t width, uint32_t depth,
++                                         uint32_t element_size)
++    : batches_(batches),
++      height_(height),
++      width_(width),
++      depth_(depth),
++      element_size_(element_size),
++      size_(batches * height * width * depth * element_size) {}
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.h
+new file mode 100644
+index 00000000000..99689f0f88c
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_dims.h
+@@ -0,0 +1,59 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <memory>
++
++class HexagonNNTensorDims {
++ public:
++  static std::shared_ptr<const HexagonNNTensorDims> New(uint32_t batches,
++                                                        uint32_t height,
++                                                        uint32_t width,
++                                                        uint32_t depth,
++                                                        uint32_t element_size);
++
++ private:
++  HexagonNNTensorDims(uint32_t batches, uint32_t height, uint32_t width,
++                      uint32_t depth, uint32_t element_size);
++
++ public:
++  const uint32_t batches_;
++  const uint32_t height_;
++  const uint32_t width_;
++  const uint32_t depth_;
++  const uint32_t element_size_;
++  const uint32_t size_;
++};
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.cc b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.cc
+new file mode 100644
+index 00000000000..5f5f34ce415
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.cc
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include "hexagon_nn_tensor_heap.h"
++
++std::shared_ptr<const HexagonNNTensor> HexagonNNTensorHeap::New(
++    std::shared_ptr<const HexagonNNTensorDims> &dims) {
++  std::shared_ptr<const HexagonNNTensor> sp(new HexagonNNTensorHeap(dims));
++  return sp;
++}
++
++HexagonNNTensorHeap::HexagonNNTensorHeap(
++    std::shared_ptr<const HexagonNNTensorDims> &dims)
++    : HexagonNNTensor(dims, nullptr), private_data_(dims_->size_) {
++  data_ = private_data_.data();
++}
+diff --git a/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.h b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.h
+new file mode 100644
+index 00000000000..95d11cd4b1e
+--- /dev/null
++++ b/tensorflow/lite/delegates/hexagon/hexagon_nn_cached_graph/hexagon_nn_tensor_heap.h
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <memory>
++#include <vector>
++
++#include "hexagon_nn_tensor.h"
++#include "hexagon_nn_tensor_dims.h"
++
++class HexagonNNTensorHeap : public HexagonNNTensor {
++ public:
++  static std::shared_ptr<const HexagonNNTensor> New(
++      std::shared_ptr<const HexagonNNTensorDims> &dims);
++
++ private:
++  HexagonNNTensorHeap(std::shared_ptr<const HexagonNNTensorDims> &dims);
++
++ private:
++  std::vector<uint8_t> private_data_;
++};
+diff --git a/tensorflow/lite/examples/run_cached_graph/CMakeLists.txt b/tensorflow/lite/examples/run_cached_graph/CMakeLists.txt
+new file mode 100644
+index 00000000000..f7e3ccf277b
+--- /dev/null
++++ b/tensorflow/lite/examples/run_cached_graph/CMakeLists.txt
+@@ -0,0 +1,19 @@
++set (RUN_CACHED_GRAPH_TARGET_NAME run_cached_graph)
++
++file(GLOB_RECURSE
++  RUN_CACHED_GRAPH_SRCS
++  "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
++)
++
++add_executable(${RUN_CACHED_GRAPH_TARGET_NAME}
++  ${RUN_CACHED_GRAPH_SRCS}
++)
++
++add_dependencies(${RUN_CACHED_GRAPH_TARGET_NAME} hexagon_nn_cached_graph)
++target_link_libraries(${RUN_CACHED_GRAPH_TARGET_NAME}
++  hexagon_nn_cached_graph
++)
++
++install(TARGETS ${RUN_CACHED_GRAPH_TARGET_NAME}
++  RUNTIME
++)
+diff --git a/tensorflow/lite/examples/run_cached_graph/bmp_helper.cc b/tensorflow/lite/examples/run_cached_graph/bmp_helper.cc
+new file mode 100644
+index 00000000000..a918288f9c9
+--- /dev/null
++++ b/tensorflow/lite/examples/run_cached_graph/bmp_helper.cc
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include <fstream>
++#include <vector>
++
++#include "bmp_helper.h"
++
++int ReadInputBMPFile(const std::string &input_bmp_name, uint32_t buf_height,
++        uint32_t buf_width, uint32_t buf_depth, const uint8_t* buf_data) {
++    std::ifstream bmp_file(input_bmp_name, std::ios::binary);
++    if (!bmp_file.is_open()) {
++        return -EACCES;
++    }
++    std::vector<uint8_t> bmp((std::istreambuf_iterator<char>(bmp_file)),
++            std::istreambuf_iterator<char>());
++
++    int32_t height = *(reinterpret_cast<int32_t*>(bmp.data() + 22));
++    int32_t width = *(reinterpret_cast<int32_t*>(bmp.data() + 18));
++    int32_t depth_bpp = *(reinterpret_cast<int32_t*>(bmp.data() + 28));
++    uint32_t depth = depth_bpp / 8;
++
++    if ((3 != depth) || (buf_depth != depth)) {
++        return -ENOTSUP;
++    }
++    if (buf_height != height) {
++        return -ENOTSUP;
++    }
++    if (buf_width != width) {
++        return -ENOTSUP;
++    }
++
++    uint32_t out_line_size = width * depth;
++    uint32_t in_line_size = (width * depth + 3) & (~3ul);
++    uint8_t* out = const_cast<uint8_t*>(buf_data);
++    int32_t header = *(reinterpret_cast<int32_t*>(bmp.data() + 10));
++    uint8_t* in = bmp.data() + header;
++    if (height > 0) {
++        in += in_line_size * (height - 1);
++    }
++
++    for (int h = 0; h < std::abs(height); h++) {
++        for (int w = 0; w < width; w++) {
++            int pos = w * depth;
++            out[pos + 0] = in[pos + 2];
++            out[pos + 1] = in[pos + 1];
++            out[pos + 2] = in[pos + 0];
++        }
++
++        if (height > 0) {
++           in -= in_line_size;
++        } else {
++           in += in_line_size;
++        }
++        out += out_line_size;
++    }
++
++    return 0;
++}
+diff --git a/tensorflow/lite/examples/run_cached_graph/bmp_helper.h b/tensorflow/lite/examples/run_cached_graph/bmp_helper.h
+new file mode 100644
+index 00000000000..e42f635e2ab
+--- /dev/null
++++ b/tensorflow/lite/examples/run_cached_graph/bmp_helper.h
+@@ -0,0 +1,41 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#pragma once
++
++#include <string>
++
++int ReadInputBMPFile(const std::string &input_bmp_name, uint32_t buf_height,
++        uint32_t buf_width, uint32_t buf_depth, const uint8_t* buf_data);
+\ No newline at end of file
+diff --git a/tensorflow/lite/examples/run_cached_graph/run_cached_graph.cc b/tensorflow/lite/examples/run_cached_graph/run_cached_graph.cc
+new file mode 100644
+index 00000000000..84b6a1b2243
+--- /dev/null
++++ b/tensorflow/lite/examples/run_cached_graph/run_cached_graph.cc
+@@ -0,0 +1,194 @@
++/*
++ * Copyright (c) 2021 Qualcomm Innovation Center, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted (subject to the limitations in the
++ * disclaimer below) provided that the following conditions are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *    * Neither the name of Qualcomm Innovation Center nor the names of its
++ *      contributors may be used to endorse or promote products derived
++ *      from this software without specific prior written permission.
++ *
++ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
++ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
++ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
++ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
++ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
++ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include <chrono>
++#include <fstream>
++#include <getopt.h>
++#include <vector>
++#include <string>
++
++#include "hexagon_nn_cached_graph.h"
++#include "hexagon_nn_tensor.h"
++#include "hexagon_nn_tensor_heap.h"
++#include "bmp_helper.h"
++#include "hexagon_nn_log.h"
++
++namespace run_cached_graph {
++
++struct Args {
++    std::string input_graph_name;
++    std::vector<std::string> input_file_names;
++    std::vector<std::string> output_file_names;
++};
++
++void DisplayUsage() {
++  HEX_NN_MSG
++      << "run_cached_graph\n"
++      << "--help, -h: application instructions\n"
++      << "--graph, -g: cached graph\n"
++      << "--input, -i: input bmp file\n"
++      << "--output, -o: output file\n";
++}
++
++int ArgsParse(int argc, char** argv, Args *args) {
++    while (true) {
++        static struct option long_options[] = {
++            {"help", optional_argument, nullptr, 'h'},
++            {"graph", required_argument, nullptr, 'g'},
++            {"input", required_argument, nullptr, 'i'},
++            {"output", required_argument, nullptr, 'o'},
++            {nullptr, 0, nullptr, 0}
++        };
++        int option_index = 0;
++        int c = getopt_long(argc, argv, "hg:i:o:", long_options, &option_index);
++        if (c == -1) {
++            break;
++        }
++
++        switch (c) {
++        case 'g':
++            args->input_graph_name = optarg;
++            break;
++        case 'i':
++            args->input_file_names.push_back(optarg);
++            break;
++        case 'o':
++            args->output_file_names.push_back(optarg);
++            break;
++        case 'h':
++        case '?':
++        default:
++            DisplayUsage();
++            return -EINVAL;
++        }
++    }
++
++    return 0;
++}
++
++int Main(int argc, char** argv) {
++    HEX_NN_MSG << "===== Run Cached Graph =====" << std::endl;
++
++    Args args;
++    int rc = ArgsParse(argc, argv, &args);
++    if (0 != rc) {
++        return rc;
++    }
++
++    std::ifstream graph_file(args.input_graph_name, std::ios::binary);
++    if (!graph_file.is_open()) {
++        HEX_NN_ERR << "Cannot open input file " << args.input_graph_name <<
++                std::endl;
++        return -EBADF;
++    }
++    std::vector<uint8_t> graph((std::istreambuf_iterator<char>(graph_file)),
++            std::istreambuf_iterator<char>());
++
++    auto b = std::chrono::system_clock::now();
++    auto g = HexagonNNCachedGraph::New(graph);
++    auto e = std::chrono::system_clock::now();
++    HEX_NN_MSG << "Load Graph time in microseconds: "
++        << std::chrono::duration_cast<std::chrono::microseconds>(e - b).count()
++        << " µs" << std::endl;
++    if (!g) {
++        return -EFAULT;
++    }
++
++    std::vector<std::shared_ptr<const HexagonNNTensorDims>> in_dims =
++            g->GetInputTensorDims();
++    if (in_dims.size() != args.input_file_names.size()) {
++        HEX_NN_ERR << "Number of input tensors " << in_dims.size() <<
++                " is different than number of input file names " <<
++                args.input_file_names.size() << std::endl;
++        return -EINVAL;
++    }
++
++    std::vector<std::shared_ptr<const HexagonNNTensor>> in;
++    for (auto &i : in_dims) {
++        in.push_back(HexagonNNTensorHeap::New(i));
++    }
++
++    for (size_t i = 0; i < args.input_file_names.size(); i++) {
++        rc = ReadInputBMPFile(args.input_file_names[i], in[i]->dims_->height_,
++                in[i]->dims_->width_, in[i]->dims_->depth_, in[i]->data_);
++        if (rc) {
++            return rc;
++        }
++    }
++
++    std::vector<std::shared_ptr<const HexagonNNTensorDims>> out_dims =
++            g->GetOutputTensorDims();
++    if (out_dims.size() != args.output_file_names.size()) {
++        HEX_NN_ERR << "Number of output tensors " << out_dims.size() <<
++                " is different than number of output file names " <<
++                args.output_file_names.size() << std::endl;
++        return -EINVAL;
++    }
++
++    std::vector<std::shared_ptr<const HexagonNNTensor>> out;
++    for (auto &o : out_dims) {
++        out.push_back(HexagonNNTensorHeap::New(o));
++    }
++
++    auto s = std::chrono::system_clock::now();
++    rc = g->Process(in, out);
++    auto f = std::chrono::system_clock::now();
++    HEX_NN_MSG << "Process time in microseconds: "
++        << std::chrono::duration_cast<std::chrono::microseconds>(f - s).count()
++        << " µs" << std::endl;
++    if (0 != rc) {
++        return rc;
++    }
++
++    for (int i = 0; i < out.size(); i++) {
++        std::ofstream f(args.output_file_names[i]);
++        if (!f.is_open()) {
++            HEX_NN_ERR << "Cannot open file for writing " <<
++                    args.output_file_names[i] << std::endl;
++            return -EACCES;
++        }
++        f.write(reinterpret_cast<const char *>(out[i]->data_),
++                out[i]->dims_->size_);
++    }
++
++    HEX_NN_MSG << "I am ready !!!" << std::endl;
++    return 0;
++}
++
++}  // namespace run_cached_graph
++
++int main(int argc, char** argv) {
++  return run_cached_graph::Main(argc, argv);
++}
+-- 
+2.17.1
+
