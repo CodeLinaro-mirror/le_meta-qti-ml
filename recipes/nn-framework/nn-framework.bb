@@ -11,6 +11,7 @@ ${LICENSE};md5=89aea4e17d99a7cacdbeed46a0096b10"
 # The revision of the recipe used to build the package.
 PV = "1.0"
 PR = "r0"
+PR_append .= ".3"
 
 # Dependencies.
 DEPENDS += "libbase"
@@ -36,6 +37,8 @@ TEMP_DIR = "/data/local/tmp"
 EXTRA_OECMAKE += " -DSYSROOT_INCDIR=${STAGING_INCDIR}"
 EXTRA_OECMAKE += " -DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
 EXTRA_OECMAKE += " -DNNAPI_LIB_DIR=${libdir}"
+LDFLAGS_append = ",--build-id"
+
 
 PACKAGECONFIG[vts] = "-DVTS_TEMP_PATH=${TEMP_DIR} -DUSE_VTS=ON,,,"
 
