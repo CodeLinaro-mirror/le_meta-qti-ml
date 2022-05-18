@@ -1,0 +1,53 @@
+From 8f1c3dfe0ce2faaf30eb0575959f576cf8a01d26 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Tue, 9 Nov 2021 10:09:55 +0000
+Subject: [PATCH 5/8] tensorflow-lite: Enable align corners in Bilinear resize
+ operation.
+
+- Rebase fix from previous release
+
+Change-Id: I78759e7700b4579da11ca2b70d0839160b4f54d8
+---
+ .../lite/delegates/nnapi/nnapi_delegate.cc      | 17 ++++++-----------
+ 1 file changed, 6 insertions(+), 11 deletions(-)
+
+diff --git a/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc b/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc
+index aa33f65f1b2..0c0efe0e39d 100644
+--- a/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc
++++ b/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc
+@@ -2458,9 +2458,6 @@ bool NNAPIDelegateKernel::Validate(
+       auto builtin =
+           reinterpret_cast<TfLiteResizeBilinearParams*>(node->builtin_data);
+       if (android_sdk_version <= kMinSdkVersionForNNAPI12) {
+-        Expect(!builtin->align_corners,
+-               NNAPIValidationFailureType::kUnsupportedOperandValue,
+-               "NNAPI does not support align_corners == true.", &val_ctx);
+         Expect(!builtin->half_pixel_centers,
+                NNAPIValidationFailureType::kUnsupportedOperandValue,
+                "NNAPI does not support half_pixel_centers == true.", &val_ctx);
+@@ -3596,16 +3593,14 @@ TfLiteStatus NNAPIDelegateKernel::Map(
+       auto& output = mapping_args.context->tensors[output_id];
+       const int output_height = output.dims->data[1];
+       const int output_width = output.dims->data[2];
++
++      auto builtin = reinterpret_cast<TfLiteResizeBilinearParams*>
++          (mapping_args.node->builtin_data);
++
++      const bool align_corners = builtin->align_corners;
+       mapping_args.builder->AddScalarInt32Operand(output_width);
+       mapping_args.builder->AddScalarInt32Operand(output_height);
+-      auto builtin = reinterpret_cast<TfLiteResizeBilinearParams*>(
+-          mapping_args.node->builtin_data);
+-      if (builtin->align_corners == true ||
+-          builtin->half_pixel_centers == true) {
+-        mapping_args.builder->AddScalarBoolOperand(false);  // Use NHWC format
+-        mapping_args.builder->AddScalarBoolOperand(builtin->align_corners);
+-        mapping_args.builder->AddScalarBoolOperand(builtin->half_pixel_centers);
+-      }
++      mapping_args.builder->AddScalarBoolOperand(align_corners);
+       *nn_op_type = ANEURALNETWORKS_RESIZE_BILINEAR;
+     } break;
+     case kTfLiteBuiltinResizeNearestNeighbor: {
+-- 
+2.17.1
+
