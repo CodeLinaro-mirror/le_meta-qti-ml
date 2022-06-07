@@ -10,7 +10,7 @@ ${LICENSE};md5=89aea4e17d99a7cacdbeed46a0096b10"
 SRCREV = "1.24.0"
 BRANCH = "master"
 
-SRC_URI = "git://github.com/google/nsync.git;protocol=git;branch=${BRANCH}"
+SRC_URI = "git://github.com/google/nsync.git;protocol=https;branch=${BRANCH}"
 
 S  = "${WORKDIR}/git"
 
