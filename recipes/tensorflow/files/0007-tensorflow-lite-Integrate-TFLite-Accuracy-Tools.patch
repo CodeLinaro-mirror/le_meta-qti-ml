@@ -1,7 +1,7 @@
-From f3edac8b3225a5cba77ade341c9697f3587579a1 Mon Sep 17 00:00:00 2001
+From da55c4eaf7a5a6bad18ef8b86b3e8c51682fa04d Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:03 +0000
-Subject: [PATCH 09/14] tensorflow-lite: Integrate TFLite Accuracy Tools
+Subject: [PATCH 07/12] tensorflow-lite: Integrate TFLite Accuracy Tools
 
 - Inference Diff Tool
 - COCO Object Detection Tool
@@ -117,10 +117,10 @@ index 00000000000..092bffa086f
 +  LIBRARY
 +)
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index ab4723e596e..e622ae1bde8 100644
+index 9f2953d1152..89c2083f027 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
-@@ -98,6 +98,7 @@ option(TFLITE_ENABLE_HEXAGON_NN_API_TRACER_INPUT_DUMP "Enable Hexagon API tracer
+@@ -95,6 +95,7 @@ option(TFLITE_ENABLE_HEXAGON "Enable Hexagon" ON)
  option(TFLITE_ENABLE_XNNPACK "Enable XNNPACK backend" ON)
  
  option(TFLITE_KERNEL_TEST "Enable tflite kernel unit test" OFF)
@@ -128,7 +128,7 @@ index ab4723e596e..e622ae1bde8 100644
  
  set(CMAKE_CXX_STANDARD 14)  # Some components require C++14.
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-@@ -359,6 +360,11 @@ if(TFLITE_ENABLE_XNNPACK)
+@@ -356,6 +357,11 @@ if(TFLITE_ENABLE_XNNPACK)
    list(APPEND TFLITE_TARGET_DEPENDENCIES
      XNNPACK
    )
@@ -139,8 +139,8 @@ index ab4723e596e..e622ae1bde8 100644
 +  endif()
  endif()
  
- # The hexagon nn cached graph
-@@ -564,6 +570,11 @@ if(TFLITE_KERNEL_TEST)
+ if(TFLITE_ENABLE_HEXAGON)
+@@ -528,6 +534,11 @@ if(TFLITE_KERNEL_TEST)
    add_subdirectory(${TFLITE_SOURCE_DIR}/kernels)
  endif()
  
@@ -152,9 +152,9 @@ index ab4723e596e..e622ae1bde8 100644
  # The benchmark tool.
  add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark)
  
-@@ -576,6 +587,11 @@ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/multimodel_label_image)
- # The run_cached_graph example.
- add_subdirectory(${TFLITE_SOURCE_DIR}/examples/run_cached_graph)
+@@ -537,6 +548,11 @@ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/label_image)
+ # The multimodel_label_image example.
+ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/multimodel_label_image)
  
 +# The evaluation tools.
 +if (TFLITE_ENABLE_EVALUATION_TOOLS)

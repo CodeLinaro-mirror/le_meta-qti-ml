@@ -1,7 +1,7 @@
-From 24fb91e869dc7d76b27697987f5fcb057d3013ef Mon Sep 17 00:00:00 2001
+From b7db3d2c5189d848b19cc8bafe099c0d4a6d87a6 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:01 +0000
-Subject: [PATCH 08/14] tensorflow-lite: Add clang support
+Subject: [PATCH 06/12] tensorflow-lite: Add clang support
 
 Change-Id: Iae22d67311234266d0e80929aec5525154a4a967
 ---
@@ -10,7 +10,7 @@ Change-Id: Iae22d67311234266d0e80929aec5525154a4a967
  2 files changed, 14 insertions(+), 4 deletions(-)
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index a6b85f7f3e9..ab4723e596e 100644
+index 34e963fc5ea..9f2953d1152 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
 @@ -44,8 +44,18 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")

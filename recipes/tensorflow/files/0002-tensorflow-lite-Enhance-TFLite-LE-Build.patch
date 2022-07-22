@@ -1,7 +1,7 @@
-From 1af773620314a3c98c56849d5b84308464e5a1df Mon Sep 17 00:00:00 2001
+From e216cf38bdf78fca7c009eab4ec5743fc8a90fca Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:47 +0000
-Subject: [PATCH 02/14] tensorflow-lite: Enhance TFLite LE Build
+Subject: [PATCH 02/12] tensorflow-lite: Enhance TFLite LE Build
 
 - Upgrade Hexagon NN Version to 1.28.0
 - Integrate Multi-Model Label Image App

@@ -1,7 +1,7 @@
-From a3211a123e7ccd5cc5115ca11c1e39eb957a87b5 Mon Sep 17 00:00:00 2001
+From 2c8785c2311e86cfba778b3562a83017f06f9b28 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:43 +0000
-Subject: [PATCH 01/14] tensorflow-lite: Bring-up TFLite on LE platforms
+Subject: [PATCH 01/12] tensorflow-lite: Bring-up TFLite on LE platforms
 
 Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
 ---

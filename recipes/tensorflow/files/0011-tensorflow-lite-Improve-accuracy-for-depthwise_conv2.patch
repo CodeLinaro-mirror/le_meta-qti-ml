@@ -1,7 +1,7 @@
-From 1fee79cd02d2b2d067a1be6706c0b5784b52ba47 Mon Sep 17 00:00:00 2001
+From cf8c77d4cbbbd6d204aa6195e88b3ab5eb6072dc Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:12 +0000
-Subject: [PATCH 13/14] tensorflow-lite: Improve accuracy for depthwise_conv2d
+Subject: [PATCH 11/12] tensorflow-lite: Improve accuracy for depthwise_conv2d
  with stride
 
 In case stride more than 1 is present, apply padding explicitly before the
@@ -14,7 +14,7 @@ Change-Id: Id75c526ea1a2274aaf3e98deccd64e46999fb8ea
  1 file changed, 77 insertions(+), 23 deletions(-)
 
 diff --git a/tensorflow/lite/delegates/hexagon/builders/conv_2d_builder.cc b/tensorflow/lite/delegates/hexagon/builders/conv_2d_builder.cc
-index 7db75a9f840..5cc59fd23fa 100644
+index 7db75a9f840..9ae2ee4804d 100644
 --- a/tensorflow/lite/delegates/hexagon/builders/conv_2d_builder.cc
 +++ b/tensorflow/lite/delegates/hexagon/builders/conv_2d_builder.cc
 @@ -151,6 +151,9 @@ TfLiteStatus Conv2dOpBuilder::PopulateSubGraph(const TfLiteIntArray* inputs,

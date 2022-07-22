@@ -1,7 +1,7 @@
-From b14074ccf265434aa68dcf9da58edf88cd1a79b7 Mon Sep 17 00:00:00 2001
+From 880939814593d07dc538c58c7291aa1b560ded70 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:52 +0000
-Subject: [PATCH 04/14] tensorflow-lite: Enable AveragePool2D nnapi delegation
+Subject: [PATCH 03/12] tensorflow-lite: Enable AveragePool2D nnapi delegation
 
 Hexagon doesn't have this filter width/height limitation.
 

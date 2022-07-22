@@ -1,7 +1,7 @@
-From f3c7f610b738f18ba07372382d5df00a3a0af174 Mon Sep 17 00:00:00 2001
+From 62da52361d01c4e15ee9895ff7946686716a3f43 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:59 +0000
-Subject: [PATCH 07/14] tensorflow-lite: Enable building TFLite as a shared
+Subject: [PATCH 05/12] tensorflow-lite: Enable building TFLite as a shared
  library
 
 Change-Id: If57c2e5dd6a4591932d44fc1bb4f28d8cf303bf7
@@ -11,7 +11,7 @@ Change-Id: If57c2e5dd6a4591932d44fc1bb4f28d8cf303bf7
  2 files changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index de88351d850..a6b85f7f3e9 100644
+index 1bcc5d5aa00..34e963fc5ea 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
 @@ -44,7 +44,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
@@ -23,7 +23,7 @@ index de88351d850..a6b85f7f3e9 100644
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
  endif()
  
-@@ -231,6 +231,7 @@ populate_tflite_source_vars("core" TFLITE_CORE_SRCS)
+@@ -228,6 +228,7 @@ populate_tflite_source_vars("core" TFLITE_CORE_SRCS)
  populate_tflite_source_vars("core/api" TFLITE_CORE_API_SRCS)
  populate_tflite_source_vars("c" TFLITE_C_SRCS)
  populate_tflite_source_vars("delegates" TFLITE_DELEGATES_SRCS)
@@ -31,7 +31,7 @@ index de88351d850..a6b85f7f3e9 100644
  if(TFLITE_ENABLE_GPU)
    find_package(opencl_headers REQUIRED)
    find_package(vulkan_headers REQUIRED)
-@@ -460,7 +461,7 @@ include_directories(
+@@ -446,7 +447,7 @@ include_directories(
  )
  
  # TFLite library
@@ -40,8 +40,8 @@ index de88351d850..a6b85f7f3e9 100644
    ${TFLITE_CORE_API_SRCS}
    ${TFLITE_CORE_SRCS}
    ${TFLITE_C_SRCS}
-@@ -543,6 +544,10 @@ if (TFLITE_ENABLE_HEXAGON_NN_API_TRACER)
- endif()
+@@ -507,6 +508,10 @@ target_compile_options(tensorflow-lite
+ )
  add_library(tensorflow::tensorflowlite ALIAS tensorflow-lite)
  
 +install(TARGETS tensorflow-lite

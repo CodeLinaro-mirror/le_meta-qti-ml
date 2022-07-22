@@ -30,21 +30,19 @@ SRCREV = "v${PV}"
 BRANCH = "r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
-	git://github.com/tensorflow/tensorflow.git;protocol=git;branch=${BRANCH} \
+	git://github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
 	file://0001-tensorflow-lite-Bring-up-TFLite-on-LE-platforms.patch \
 	file://0002-tensorflow-lite-Enhance-TFLite-LE-Build.patch \
-	file://0003-tensorflow-lite-Add-hexagon-cached-graph-support.patch \
-	file://0004-tensorflow-lite-Enable-AveragePool2D-nnapi-delegatio.patch \
-	file://0005-tensorflow-lite-Enable-align-corners-in-Bilinear-res.patch \
-	file://0006-tensorflow-lite-Bringup-NN-API-1.2.patch \
-	file://0007-tensorflow-lite-Enable-building-TFLite-as-a-shared-l.patch \
-	file://0008-tensorflow-lite-Add-clang-support.patch \
-	file://0009-tensorflow-lite-Integrate-TFLite-Accuracy-Tools.patch \
-	file://0010-tensorflow-lite-Enable-tflite-profiling.patch \
-	file://0011-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
-	file://0012-tensorflow-lite-Use-dynamic-loading-for-cdsprpc.patch \
-	file://0013-tensorflow-lite-Improve-accuracy-for-depthwise_conv2.patch \
-	file://0014-tensorflow-lite-Use-XNNPACK-repository-from-code-lin.patch \
+	file://0003-tensorflow-lite-Enable-AveragePool2D-nnapi-delegatio.patch \
+	file://0004-tensorflow-lite-Enable-align-corners-in-Bilinear-res.patch \
+	file://0005-tensorflow-lite-Enable-building-TFLite-as-a-shared-l.patch \
+	file://0006-tensorflow-lite-Add-clang-support.patch \
+	file://0007-tensorflow-lite-Integrate-TFLite-Accuracy-Tools.patch \
+	file://0008-tensorflow-lite-Enable-tflite-profiling.patch \
+	file://0009-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
+	file://0010-tensorflow-lite-Use-dynamic-loading-for-cdsprpc.patch \
+	file://0011-tensorflow-lite-Improve-accuracy-for-depthwise_conv2.patch \
+	file://0012-tensorflow-lite-Use-XNNPACK-repository-from-code-lin.patch \
 	file://tensorflow-lite.pc.in \
 	"
 

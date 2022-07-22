@@ -1,7 +1,7 @@
-From 72fb6ae7e923e6ec5ae9aa01124149b1257594cc Mon Sep 17 00:00:00 2001
+From 30ab08ecf7ff5a8e72e2e76eaa2af2615e95ce3e Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:07 +0000
-Subject: [PATCH 11/14] tensorflow-lite: Add support for LeakyReLU in Hexagon
+Subject: [PATCH 09/12] tensorflow-lite: Add support for LeakyReLU in Hexagon
  Delegate
 
 - Add support for quantized LeakyReLU in Hexagon Delegate,

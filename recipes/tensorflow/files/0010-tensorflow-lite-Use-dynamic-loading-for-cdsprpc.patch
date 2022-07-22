@@ -1,29 +1,37 @@
-From 24ed79b32df2f1ef680093abf3de8ff3fa8ce9c2 Mon Sep 17 00:00:00 2001
+From 2200211be13e1938ca1358b71cfe251be3c05745 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:10 +0000
-Subject: [PATCH 12/14] tensorflow-lite: Use dynamic loading for cdsprpc
+Subject: [PATCH 10/12] tensorflow-lite: Use dynamic loading for cdsprpc
 
 - Switch from dynamic linking to dynamic loading for libcdsprpc.so
 
 Change-Id: Iefa2a85df02fc56e00041da65ad00494f64e9398
 ---
- tensorflow/lite/CMakeLists.txt                |  1 -
+ tensorflow/lite/CMakeLists.txt                |  5 +-
  .../delegates/hexagon/hexagon/hexagon_rpc.cc  | 91 +++++++++++++++++++
- 2 files changed, 91 insertions(+), 1 deletion(-)
+ 2 files changed, 93 insertions(+), 3 deletions(-)
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index d7d18db7a3d..2b226f57645 100644
+index 11a0e35a9bb..f4a9f62f956 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
-@@ -403,7 +403,6 @@ install(TARGETS libhexagon_interface
- add_dependencies(libhexagon_interface hexagon_nn_cached_graph)
- target_link_libraries(libhexagon_interface
-   hexagon_nn_cached_graph
--  cdsprpc
+@@ -389,13 +389,12 @@ add_library(libhexagon_interface SHARED
+   ${TFLITE_DELEGATES_HEXAGON_INT_SRCS}
  )
  
- list(APPEND TFLITE_TARGET_DEPENDENCIES
++target_link_libraries(libhexagon_interface ${CMAKE_DL_LIBS})
++
+ install(TARGETS libhexagon_interface
+   LIBRARY
+ )
+ 
+-# link the libraries to the executable
+-target_link_libraries (libhexagon_interface libcdsprpc.so)
+-
+ set_target_properties(libhexagon_interface PROPERTIES PREFIX "")
+ 
+ list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DLINUX")
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
 new file mode 100644
 index 00000000000..29a16823c86

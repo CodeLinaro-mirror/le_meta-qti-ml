@@ -1,7 +1,7 @@
-From 0ae0f16124c1a30ab0a63facee51a513a989958a Mon Sep 17 00:00:00 2001
+From 74dc13d7b0b410473fec0c5c063ea44f3097d3be Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:05 +0000
-Subject: [PATCH 10/14] tensorflow-lite: Enable tflite profiling
+Subject: [PATCH 08/12] tensorflow-lite: Enable tflite profiling
 
 - Enable by defauly TF Lite profiling
 
@@ -11,7 +11,7 @@ Change-Id: I77734cb58147c12f963e92f351641a67b1f1d5a5
  1 file changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index e622ae1bde8..d7d18db7a3d 100644
+index 89c2083f027..11a0e35a9bb 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
 @@ -34,9 +34,7 @@ endif()

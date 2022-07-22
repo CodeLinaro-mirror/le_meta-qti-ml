@@ -1,7 +1,7 @@
-From d9828c745ef1a7f6dd0bc225fdcee46e03d0276d Mon Sep 17 00:00:00 2001
+From 2455b3972d280bfff87573b1cbb40f1dd29a13aa Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Fri, 7 Jan 2022 14:47:42 +0200
-Subject: [PATCH 14/14] tensorflow-lite: Use XNNPACK repository from code
+Subject: [PATCH 12/12] tensorflow-lite: Use XNNPACK repository from code
  linaro
 
 - XNNPACK repository needs to be used from code linaro
