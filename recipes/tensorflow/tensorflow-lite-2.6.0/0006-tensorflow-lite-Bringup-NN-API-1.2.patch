@@ -1,0 +1,371 @@
+From 5d88bf77184488bc6faa89773aa0bbef6d8ab328 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Tue, 9 Nov 2021 10:09:57 +0000
+Subject: [PATCH 06/14] tensorflow-lite: Bringup NN API 1.2
+
+- Add missing TF Lite utils functions,
+  required by NN API 1.2
+
+Change-Id: I48627a245359f2cc0d102de9803124a1ac95f396
+---
+ .../internal/optimized/neon_tensor_utils.cc   | 126 ++++++++++++++++++
+ .../internal/optimized/neon_tensor_utils.h    |  57 ++++++++
+ .../optimized/neon_tensor_utils_impl.h        |   9 ++
+ .../reference/portable_tensor_utils.cc        |  12 ++
+ .../reference/portable_tensor_utils_impl.h    |   3 +
+ 5 files changed, 207 insertions(+)
+
+diff --git a/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.cc b/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.cc
+index 76a8e59a786..75cd0a3f8f3 100644
+--- a/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.cc
++++ b/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.cc
+@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ ==============================================================================*/
++
+ #include <sys/types.h>
+ 
+ #include <algorithm>
+@@ -232,6 +233,44 @@ void NeonMatrixBatchVectorMultiplyAccumulate(const float* matrix, int m_rows,
+   }
+ }
+ 
++void NeonMatrixBatchVectorMultiplyAccumulate(const float* matrix, int m_rows,
++                                             int m_cols, const float* vector,
++                                             int n_batch, float* result,
++                                             int result_stride) {
++  // If v_size is not divisible by the vector size, then we need to process the
++  // final few elements sequentially. postamble_start shows the start index
++  // where this should happen.
++  const int postamble_start =
++      RoundDownVectors<kFloatValuesPerNeonVector>(m_cols);
++
++  for (int b = 0; b < n_batch; b++) {
++    float* result_in_batch = result + b * m_rows * result_stride;
++    const float* vector_in_batch = vector + b * m_cols;
++    const float* matrix_row = matrix;
++
++    // Main matrix by vector multiplication loop
++    for (int r = 0; r < m_rows; r++) {
++      float32x4_t acc_32x4 = vmovq_n_f32(0.0);
++      int c = 0;
++      for (; c < postamble_start; c += kFloatValuesPerNeonVector) {
++        // Load 4 float values from vector and matrix row.
++        float32x4_t vector_f32x4 = vld1q_f32(vector_in_batch + c);
++        float32x4_t matrix_f32x4 = vld1q_f32(matrix_row + c);
++        // Multiply the vector and matrix row and add to accumulator.
++        acc_32x4 = vmlaq_f32(acc_32x4, matrix_f32x4, vector_f32x4);
++      }
++      // Add the 4 intermediate sum values to get the final dot-prod value for
++      // this column.
++      *result_in_batch += AccumulateNeonLane(acc_32x4);
++      for (; c < m_cols; c++) {
++        *result_in_batch += matrix_row[c] * vector_in_batch[c];
++      }
++      matrix_row += m_cols;
++      result_in_batch += result_stride;
++    }
++  }
++}
++
+ #ifdef __aarch64__
+ 
+ // We interleave vector data to make the dot product logic more efficient.
+@@ -2157,6 +2196,34 @@ bool NeonIsZeroVector(const int8_t* vector, int v_size) {
+   return true;
+ }
+ 
++void NeonClipVector(const float* vector, int v_size, float abs_limit,
++                    float* result) {
++  // If v_size is not divisible by the vector size, then we need to process the
++  // final few elements sequentially. postamble_start shows the start index
++  // where this should happen.
++  const int postamble_start =
++      RoundDownVectors<kFloatValuesPerNeonVector>(v_size);
++
++  // Replicate abs_limit and -abs_limit in two vectors.
++  const float32x4_t abs_limit_f32x4 = vmovq_n_f32(abs_limit);
++  const float32x4_t neg_abs_limit_f32x4 = vmovq_n_f32(-abs_limit);
++
++  int v = 0;
++  for (; v < postamble_start; v += kFloatValuesPerNeonVector) {
++    // Load from memory to vector.
++    float32x4_t v_f32x4 = vld1q_f32(vector + v);
++    // Clip between abs_limit and -abs_limit.
++    float32x4_t result_f32x4 = vminq_f32(abs_limit_f32x4, v_f32x4);
++    result_f32x4 = vmaxq_f32(neg_abs_limit_f32x4, result_f32x4);
++    // Save to output.
++    vst1q_f32(result + v, result_f32x4);
++  }
++  // Postamble loop.
++  for (; v < v_size; v++) {
++    result[v] = std::max(std::min(abs_limit, vector[v]), -abs_limit);
++  }
++}
++
+ void NeonVectorScalarMultiply(const int8_t* vector, const int v_size,
+                               const float scale, float* result) {
+   // Here the assumption is that each buffer is 4-byte aligned.
+@@ -2512,6 +2579,65 @@ void NeonReductionSumVector(const int8_t* input_vector, int32_t* output_vector,
+   }
+ }
+ 
++
++float PortableVectorVectorDotProduct(const float* vector1, const float* vector2,
++                                     int v_size) {
++  float result = 0.0;
++  for (int v = 0; v < v_size; v++) {
++    result += *vector1++ * *vector2++;
++  }
++  return result;
++}
++
++void PortableBatchVectorBatchVectorDotProduct(const float* vector1,
++                                              const float* vector2, int v_size,
++                                              int n_batch, float* result,
++                                              int result_stride) {
++  float* result_ptr = result;
++  const float* vector1_ptr = vector1;
++  const float* vector2_ptr = vector2;
++  for (int b = 0; b < n_batch; b++) {
++    *result_ptr =
++        PortableVectorVectorDotProduct(vector1_ptr, vector2_ptr, v_size);
++    vector1_ptr += v_size;
++    vector2_ptr += v_size;
++    result_ptr += result_stride;
++  }
++}
++
++void PortableVectorShiftLeft(float* vector, int v_size, float shift_value) {
++  TF_LITE_ASSERT(v_size > 0);
++  for (int i = 0; i < v_size - 1; i++) {
++    vector[i] = vector[i + 1];
++  }
++  vector[v_size - 1] = shift_value;
++}
++
++void PortableMeanStddevNormalization(const float* input_vector,
++                                     float* output_vector, int v_size,
++                                     int n_batch, float normalization_epsilon) {
++  for (int batch = 0; batch < n_batch; ++batch) {
++    float sum = 0.0f;
++    float sum_sq = 0.0f;
++    for (int i = 0; i < v_size; ++i) {
++      sum += input_vector[i];
++      sum_sq += input_vector[i] * input_vector[i];
++    }
++    const float mean = sum / v_size;
++    float stddev_inv = 0.0f;
++    const float variance = sum_sq / v_size - mean * mean;
++    if (variance == 0) {
++      stddev_inv = 1.0f / std::sqrt(normalization_epsilon);
++    } else {
++      stddev_inv = 1.0f / std::sqrt(variance);
++    }
++    for (int i = 0; i < v_size; ++i) {
++      output_vector[i] = (input_vector[i] - mean) * stddev_inv;
++    }
++    input_vector += v_size;
++    output_vector += v_size;
++  }
++}
+ void NeonVectorBatchVectorCwiseProductAccumulate(
+     const int16_t* vector, int v_size, const int16_t* batch_vector, int n_batch,
+     int32_t multiplier, int shift, int16_t* result) {
+diff --git a/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.h b/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.h
+index 18e41eb8020..6fe7f865de5 100644
+--- a/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.h
++++ b/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils.h
+@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ ==============================================================================*/
++
+ #ifndef TENSORFLOW_LITE_KERNELS_INTERNAL_OPTIMIZED_NEON_TENSOR_UTILS_H_
+ #define TENSORFLOW_LITE_KERNELS_INTERNAL_OPTIMIZED_NEON_TENSOR_UTILS_H_
+ 
+@@ -31,6 +32,14 @@ void MatrixBatchVectorMultiplyAccumulate(const float* matrix, int m_rows,
+                    vector, n_batch, result);
+ }
+ 
++void MatrixBatchVectorMultiplyAccumulate(const float* matrix, int m_rows,
++                                         int m_cols, const float* vector,
++                                         int n_batch, float* result,
++                                         int result_stride) {
++  NEON_OR_PORTABLE(MatrixBatchVectorMultiplyAccumulate, matrix, m_rows, m_cols,
++                   vector, n_batch, result, result_stride);
++}
++
+ void MatrixBatchVectorMultiplyAccumulate(const int8_t* __restrict__ matrix,
+                                          const int m_rows, const int m_cols,
+                                          const int8_t* __restrict__ vectors,
+@@ -228,6 +237,11 @@ float VectorVectorDotProduct(const float* vector1, const float* vector2,
+   return NEON_OR_PORTABLE(VectorVectorDotProduct, vector1, vector2, v_size);
+ }
+ 
++void VectorBatchVectorAdd(const float* vector, int v_size, int n_batch,
++                          float* batch_vector) {
++  PortableVectorBatchVectorAdd(vector, v_size, n_batch, batch_vector);
++}
++
+ void Sub1Vector(const float* vector, int v_size, float* result) {
+   NEON_OR_PORTABLE(Sub1Vector, vector, v_size, result);
+ }
+@@ -246,10 +260,21 @@ bool IsZeroVector(const int8_t* vector, int v_size) {
+   return NEON_OR_PORTABLE(IsZeroVector, vector, v_size);
+ }
+ 
++void ZeroVector(float* vector, int v_size) {
++  std::fill_n(vector, v_size, 0.0f);
++}
++
++void CopyVector(const float* vector, int v_size, float* result) {
++  std::copy_n(vector, v_size, result);
++}
+ void VectorScalarMultiply(const int8_t* vector, int v_size, float scale,
+                           float* result) {
+   NEON_OR_PORTABLE(VectorScalarMultiply, vector, v_size, scale, result);
+ }
++void ClipVector(const float* vector, int v_size, float abs_limit,
++                float* result) {
++  NEON_OR_PORTABLE(ClipVector, vector, v_size, abs_limit, result);
++}
+ 
+ void SymmetricQuantizeFloats(const float* values, const int size,
+                              int8_t* quantized_values, float* min_value,
+@@ -310,6 +335,38 @@ void TwoGateSaturatingAdd(const int8_t* input, int8_t input_zp,
+       recurrent_effective_scale_b, n_batch, n_cell, output);
+ }
+ 
++float PortableVectorVectorDotProduct(const float* vector1, const float* vector2,
++                                     int v_size);
++
++void PortableBatchVectorBatchVectorDotProduct(const float* vector1,
++                                              const float* vector2, int v_size,
++                                              int n_batch, float* result,
++                                              int result_stride);
++
++void BatchVectorBatchVectorDotProduct(const float* vector1,
++                                       const float* vector2, int v_size,
++                                       int n_batch, float* result,
++                                       int result_stride) {
++  PortableBatchVectorBatchVectorDotProduct(vector1, vector2, v_size, n_batch,
++                                            result, result_stride);
++}
++
++void PortableVectorShiftLeft(float* vector, int v_size, float shift_value);
++
++void VectorShiftLeft(float* vector, int v_size, float shift_value) {
++  PortableVectorShiftLeft(vector, v_size, shift_value);
++}
++
++void PortableMeanStddevNormalization(const float* input_vector,
++                                     float* output_vector, int v_size,
++                                     int n_batch, float normalization_epsilon);
++
++void MeanStddevNormalization(const float* input_vector, float* output_vector,
++                              int v_size, int n_batch,
++                              float normalization_epsilon) {
++   PortableMeanStddevNormalization(input_vector, output_vector, v_size, n_batch,
++                                   normalization_epsilon);
++}
+ }  // namespace tensor_utils
+ }  // namespace tflite
+ 
+diff --git a/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils_impl.h b/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils_impl.h
+index da2a0423201..7f08a026e52 100644
+--- a/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils_impl.h
++++ b/tensorflow/lite/kernels/internal/optimized/neon_tensor_utils_impl.h
+@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ ==============================================================================*/
++
+ #ifndef TENSORFLOW_LITE_KERNELS_INTERNAL_OPTIMIZED_NEON_TENSOR_UTILS_IMPL_H_
+ #define TENSORFLOW_LITE_KERNELS_INTERNAL_OPTIMIZED_NEON_TENSOR_UTILS_IMPL_H_
+ 
+@@ -51,6 +52,10 @@ void NeonMatrixBatchVectorMultiplyAccumulate(const int8_t* __restrict__ matrix,
+                                              float* __restrict__ result,
+                                              CpuBackendContext* context);
+ 
++void NeonMatrixBatchVectorMultiplyAccumulate(const float* matrix, int m_rows,
++                                             int m_cols, const float* vector,
++                                             int n_batch, float* result,
++                                             int result_stride);
+ // Matrix multiplication for quantized values using asymmetric quantization.
+ void NeonMatrixBatchVectorMultiplyAccumulate(
+     const int8_t* __restrict__ matrix, const int m_rows, const int m_cols,
+@@ -131,6 +136,10 @@ void NeonSub1Vector(const float* vector, int v_size, float* result);
+ 
+ void NeonSub1Vector(const int16_t* vector, int v_size, int16_t* result);
+ 
++// Clip elements of a vector using a abs_limit value.
++void NeonClipVector(const float* vector, int v_size, float abs_limit,
++                    float* result);
++
+ // Multiply all elements of vector with a scalar.
+ void NeonVectorScalarMultiply(const int8_t* vector, int v_size, float scale,
+                               float* result);
+diff --git a/tensorflow/lite/kernels/internal/reference/portable_tensor_utils.cc b/tensorflow/lite/kernels/internal/reference/portable_tensor_utils.cc
+index 844aa08cd4b..eab4ded0adb 100644
+--- a/tensorflow/lite/kernels/internal/reference/portable_tensor_utils.cc
++++ b/tensorflow/lite/kernels/internal/reference/portable_tensor_utils.cc
+@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ ==============================================================================*/
++
+ #include <algorithm>
+ #include <cmath>
+ #include <cstdint>
+@@ -648,7 +649,17 @@ void PortableCwiseAdd(const int16_t* input_1, const int16_t* input_2,
+     }
+   }
+ }
++void PortableVectorBatchVectorAdd(const float* vector, int v_size, int n_batch,
++                                  float* batch_vector) {
++  for (int b = 0; b < n_batch; b++) {
++    for (int i = 0; i < v_size; ++i) {
++      batch_vector[i] += vector[i];
++    }
++    batch_vector += v_size;
++  }
++}
+ 
++#if 0
+ float PortableVectorVectorDotProduct(const float* vector1, const float* vector2,
+                                      int v_size) {
+   float result = 0.0;
+@@ -657,6 +668,7 @@ float PortableVectorVectorDotProduct(const float* vector1, const float* vector2,
+   }
+   return result;
+ }
++#endif
+ 
+ namespace {
+ inline int32_t VectorVectorDotProduct(const int16_t* vector1,
+diff --git a/tensorflow/lite/kernels/internal/reference/portable_tensor_utils_impl.h b/tensorflow/lite/kernels/internal/reference/portable_tensor_utils_impl.h
+index a9124d16414..fb4d0f7917d 100644
+--- a/tensorflow/lite/kernels/internal/reference/portable_tensor_utils_impl.h
++++ b/tensorflow/lite/kernels/internal/reference/portable_tensor_utils_impl.h
+@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ ==============================================================================*/
++
+ #ifndef TENSORFLOW_LITE_KERNELS_INTERNAL_REFERENCE_PORTABLE_TENSOR_UTILS_IMPL_H_
+ #define TENSORFLOW_LITE_KERNELS_INTERNAL_REFERENCE_PORTABLE_TENSOR_UTILS_IMPL_H_
+ 
+@@ -228,6 +229,8 @@ void PortableTwoGateSaturatingAdd(const int8_t* input, int8_t input_zp,
+                                   int32_t n_batch, int32_t n_cell,
+                                   int16_t* output);
+ 
++void PortableVectorBatchVectorAdd(const float* vector, int v_size, int n_batch,
++                                  float* batch_vector);
+ }  // namespace tensor_utils
+ }  // namespace tflite
+ 
+-- 
+2.17.1
+
