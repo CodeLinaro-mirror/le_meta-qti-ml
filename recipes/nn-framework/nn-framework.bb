@@ -21,11 +21,9 @@ DEPENDS += "gtest"
 DEPENDS += "libfmq"
 DEPENDS += "openssl"
 
-SRCREV = "a457c5ee39ef87274b363d14a402d1e202dd401f"
-SRC_URI = "git://git.codelinaro.org/clo/la/platform/frameworks/ml/;protocol=https;branch=iot-ml.lnx.2.0.r6-rel; \
-        file://0001-nn-framework-Add-cmake-option-to-enable-disable-CPU-.patch \
-        "
-S = "${WORKDIR}/git"
+FILESPATH =+ "${WORKSPACE}/external/frameworks/ml/:"
+SRC_URI = "file://nn"
+S = "${WORKDIR}/nn"
 
 # Temporary data path
 TEMP_DIR = "/data/local/tmp"
