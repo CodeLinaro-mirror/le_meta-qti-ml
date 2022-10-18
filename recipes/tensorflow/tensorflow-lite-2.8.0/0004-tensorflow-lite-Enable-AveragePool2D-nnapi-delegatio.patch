@@ -1,0 +1,40 @@
+From abe1d187e8261bfbf65a98742a3ed3669280bafc Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Tue, 9 Nov 2021 10:09:52 +0000
+Subject: [PATCH 4/8] tensorflow-lite: Enable AveragePool2D nnapi delegation
+
+Hexagon doesn't have this filter width/height limitation.
+
+Change-Id: I22bc4b6bb5d6e2678908138cb852427b27abe183
+---
+ tensorflow/lite/delegates/nnapi/nnapi_delegate.cc | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc b/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc
+index 5c31a27a129..aa33f65f1b2 100644
+--- a/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc
++++ b/tensorflow/lite/delegates/nnapi/nnapi_delegate.cc
+@@ -2268,13 +2268,13 @@ bool NNAPIDelegateKernel::Validate(
+       auto builtin = reinterpret_cast<TfLitePoolParams*>(node->builtin_data);
+       // TODO(b/138756912): Large filter window would overflow on the
+       // quantized reference CPU path.
+-      if (IsQuantized(context->tensors[node->inputs->data[0]].type)) {
+-        Expect(is_accelerator_specified ||
+-                   (builtin->filter_width * builtin->filter_height <= 256),
+-               NNAPIValidationFailureType::kUnsupportedOperandSize,
+-               "Large filter window would overflow on the reference CPU path",
+-               &val_ctx);
+-      }
++      //if (IsQuantized(context->tensors[node->inputs->data[0]].type)) {
++      //  Expect(is_accelerator_specified ||
++      //             (builtin->filter_width * builtin->filter_height <= 256),
++      //         NNAPIValidationFailureType::kUnsupportedOperandSize,
++      //         "Large filter window would overflow on the reference CPU path",
++      //         &val_ctx);
++      //}
+     } break;
+     case kTfLiteBuiltinMaxPool2d: {
+       ExpectMaxOpVersion(version, 2, &val_ctx);
+-- 
+2.17.1
+
