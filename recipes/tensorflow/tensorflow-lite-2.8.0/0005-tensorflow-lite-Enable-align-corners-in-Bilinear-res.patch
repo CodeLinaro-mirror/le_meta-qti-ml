@@ -1,4 +1,4 @@
-From 52b79ebe74f7d3cad9697661e2939760ca0f8407 Mon Sep 17 00:00:00 2001
+From 733fc827b3ce2c0b575fe9d9eb700c8461018970 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:55 +0000
 Subject: [PATCH 5/8] tensorflow-lite: Enable align corners in Bilinear resize

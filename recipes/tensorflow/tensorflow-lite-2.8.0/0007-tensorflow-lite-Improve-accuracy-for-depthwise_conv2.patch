@@ -1,4 +1,4 @@
-From 89f9dc9a0bccc306f6ff7848acc7c2c09a408c33 Mon Sep 17 00:00:00 2001
+From df0daf1333e886947f910c0c313d0e5c89eb4b40 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:12 +0000
 Subject: [PATCH 7/8] tensorflow-lite: Improve accuracy for depthwise_conv2d

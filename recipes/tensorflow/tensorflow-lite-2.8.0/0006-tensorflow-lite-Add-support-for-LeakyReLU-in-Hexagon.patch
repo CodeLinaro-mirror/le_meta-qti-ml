@@ -1,4 +1,4 @@
-From 1ca5669f3fa85fb88a522365122920fba9d3713e Mon Sep 17 00:00:00 2001
+From 545b9953ec126189dc7e96a810f62526d0b98352 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:10:07 +0000
 Subject: [PATCH 6/8] tensorflow-lite: Add support for LeakyReLU in Hexagon

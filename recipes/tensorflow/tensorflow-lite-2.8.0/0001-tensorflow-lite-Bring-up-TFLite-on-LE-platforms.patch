@@ -1,4 +1,4 @@
-From 49cbb0af0fd729162c12fe1b60d3fd62cf8a1bb1 Mon Sep 17 00:00:00 2001
+From 14b57e14b17f445210e3eed8eb2c4953baa81176 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:43 +0000
 Subject: [PATCH 1/8] tensorflow-lite: Bring-up TFLite on LE platforms
@@ -11,8 +11,8 @@ Subject: [PATCH 1/8] tensorflow-lite: Bring-up TFLite on LE platforms
 
 Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
 ---
- tensorflow/lite/CMakeLists.txt                |   64 +-
- tensorflow/lite/c/CMakeLists.txt              |   20 +-
+ tensorflow/lite/CMakeLists.txt                |   67 +-
+ tensorflow/lite/c/CMakeLists.txt              |   21 +-
  tensorflow/lite/c/version_script.lds          |    1 +
  .../delegates/hexagon/hexagon/AEEStdDef.h     | 1150 +++++++++
  .../delegates/hexagon/hexagon/AEEStdErr.h     |  360 +++
@@ -31,7 +31,7 @@ Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
  .../benchmark_performance_options.cc          |   40 +
  tensorflow/lite/tools/evaluation/utils.cc     |   44 +-
  tensorflow/lite/tools/evaluation/utils.h      |    6 +-
- 20 files changed, 5411 insertions(+), 29 deletions(-)
+ 20 files changed, 5415 insertions(+), 29 deletions(-)
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/AEEStdDef.h
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/AEEStdErr.h
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn.h
@@ -43,7 +43,7 @@ Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/remote.h
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index 200d1a7c46d..ddc6f332552 100644
+index 200d1a7c46d..52c718afbd8 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
 @@ -33,6 +33,21 @@ if(NOT CMAKE_BUILD_TYPE)
@@ -96,7 +96,7 @@ index 200d1a7c46d..ddc6f332552 100644
  endif()
  if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "iOS")
    list(FILTER TFLITE_SRCS EXCLUDE REGEX ".*minimal_logging_ios\\.cc$")
-@@ -375,6 +393,9 @@ if(_TFLITE_ENABLE_NNAPI)
+@@ -375,9 +393,15 @@ if(_TFLITE_ENABLE_NNAPI)
    populate_tflite_source_vars(
      "nnapi" TFLITE_NNAPI_SRCS FILTER "(_disabled)\\.(cc|h)$"
    )
@@ -106,7 +106,13 @@ index 200d1a7c46d..ddc6f332552 100644
    if(${TFLITE_ENABLE_NNAPI_VERBOSE_VALIDATION})
      list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DNNAPI_VERBOSE_VALIDATION")
    endif()
-@@ -396,8 +417,43 @@ if(TFLITE_ENABLE_XNNPACK)
++  list(APPEND TFLITE_TARGET_DEPENDENCIES
++    rt
++  )
+ else()
+   set(TFLITE_DELEGATES_NNAPI_SRCS
+     "${TFLITE_SOURCE_DIR}/delegates/nnapi/nnapi_delegate_disabled.cc"
+@@ -396,8 +420,43 @@ if(TFLITE_ENABLE_XNNPACK)
    list(APPEND TFLITE_TARGET_DEPENDENCIES
      XNNPACK
    )
@@ -151,7 +157,7 @@ index 200d1a7c46d..ddc6f332552 100644
  if (TFLITE_ENABLE_RESOURCE)
    populate_tflite_source_vars("experimental/resource"
      TFLITE_EXPERIMENTAL_RESOURCE_SRCS
-@@ -469,6 +525,7 @@ add_library(tensorflow-lite
+@@ -469,6 +528,7 @@ add_library(tensorflow-lite
    ${TFLITE_DELEGATES_XNNPACK_SRCS}
    ${TFLITE_EXPERIMENTAL_RESOURCE_SRCS}
    ${TFLITE_EXPERIMENTAL_RUY_PROFILER_SRCS}
@@ -159,7 +165,7 @@ index 200d1a7c46d..ddc6f332552 100644
    ${TFLITE_EXPERIMENTAL_RUY_SRCS}
    ${TFLITE_KERNEL_INTERNAL_OPT_INTEGER_OPS_SRCS}
    ${TFLITE_KERNEL_INTERNAL_OPT_SPARSE_OPS_SRCS}
-@@ -487,6 +544,7 @@ add_library(tensorflow-lite
+@@ -487,6 +547,7 @@ add_library(tensorflow-lite
  target_include_directories(tensorflow-lite
    PUBLIC
      ${TFLITE_INCLUDE_DIRS}
@@ -168,7 +174,7 @@ index 200d1a7c46d..ddc6f332552 100644
  target_link_libraries(tensorflow-lite
    PUBLIC
 diff --git a/tensorflow/lite/c/CMakeLists.txt b/tensorflow/lite/c/CMakeLists.txt
-index c43b7c08214..1503f1def92 100644
+index c43b7c08214..cf122a7a4fa 100644
 --- a/tensorflow/lite/c/CMakeLists.txt
 +++ b/tensorflow/lite/c/CMakeLists.txt
 @@ -14,6 +14,21 @@
@@ -201,14 +207,16 @@ index c43b7c08214..1503f1def92 100644
  )
  
  set(CMAKE_CXX_STANDARD 11)
-@@ -85,3 +99,7 @@ endif()
+@@ -84,4 +98,9 @@ endif()
+ 
  target_link_libraries(tensorflowlite_c
    tensorflow-lite
- )
++  rt
++)
 +
 +install(TARGETS tensorflowlite_c
 +  LIBRARY
-+)
+ )
 diff --git a/tensorflow/lite/c/version_script.lds b/tensorflow/lite/c/version_script.lds
 index 07f5a25a5f7..2ac552326d7 100644
 --- a/tensorflow/lite/c/version_script.lds

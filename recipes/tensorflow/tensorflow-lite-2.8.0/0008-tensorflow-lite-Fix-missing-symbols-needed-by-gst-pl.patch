@@ -1,4 +1,4 @@
-From 7039feb2ecd76429d123aa84487b88b5ebc1b813 Mon Sep 17 00:00:00 2001
+From 473e083f9bc0fdbb01bba4b2dbf85be4dc7569e3 Mon Sep 17 00:00:00 2001
 From: Dobromir Atanasov <quic_datanaso@quicinc.com>
 Date: Mon, 30 May 2022 14:39:36 +0300
 Subject: [PATCH 8/8] tensorflow-lite: Fix missing symbols needed by
@@ -11,14 +11,14 @@ Subject: [PATCH 8/8] tensorflow-lite: Fix missing symbols needed by
  tensorflow/lite/CMakeLists.txt   | 11 +++++++++++
  tensorflow/lite/c/CMakeLists.txt |  2 ++
  tensorflow/lite/c/dummy.cc       | 15 +++++++++++++++
- 3 files changed, 27 insertions(+)
+ 3 files changed, 28 insertions(+)
  create mode 100644 tensorflow/lite/c/dummy.cc
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index 1a090dd9e09..d98ef4389f6 100644
+index 97f46758fed..633499c5861 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
-@@ -473,6 +473,15 @@ if(TFLITE_ENABLE_HEXAGON)
+@@ -463,6 +463,15 @@ if(TFLITE_ENABLE_HEXAGON)
    )
  endif()
  
@@ -34,7 +34,7 @@ index 1a090dd9e09..d98ef4389f6 100644
  if (TFLITE_ENABLE_RESOURCE)
    populate_tflite_source_vars("experimental/resource"
      TFLITE_EXPERIMENTAL_RESOURCE_SRCS
-@@ -584,6 +593,8 @@ target_link_libraries(tensorflow-lite
+@@ -574,6 +583,8 @@ target_link_libraries(tensorflow-lite
      ${TFLITE_TARGET_DEPENDENCIES}
  )
  
@@ -44,7 +44,7 @@ index 1a090dd9e09..d98ef4389f6 100644
    list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DTFL_STATIC_LIBRARY_BUILD")
  endif()
 diff --git a/tensorflow/lite/c/CMakeLists.txt b/tensorflow/lite/c/CMakeLists.txt
-index 1503f1def92..27cc30d4f7e 100644
+index cf122a7a4fa..51d1345636e 100644
 --- a/tensorflow/lite/c/CMakeLists.txt
 +++ b/tensorflow/lite/c/CMakeLists.txt
 @@ -84,6 +84,7 @@ add_library(tensorflowlite_c ${TFLITE_C_LIBTYPE}
@@ -55,17 +55,17 @@ index 1503f1def92..27cc30d4f7e 100644
  )
  
  if (TFLITE_C_BUILD_SHARED_LIBS)
-@@ -98,6 +99,7 @@ endif()
- 
+@@ -99,6 +100,7 @@ endif()
  target_link_libraries(tensorflowlite_c
    tensorflow-lite
+   rt
 +  utils_simple_delegate
  )
  
  install(TARGETS tensorflowlite_c
 diff --git a/tensorflow/lite/c/dummy.cc b/tensorflow/lite/c/dummy.cc
 new file mode 100644
-index 00000000000..d2653abd086
+index 00000000000..2f7844fd3e4
 --- /dev/null
 +++ b/tensorflow/lite/c/dummy.cc
 @@ -0,0 +1,15 @@

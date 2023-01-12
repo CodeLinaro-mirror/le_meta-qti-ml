@@ -1,4 +1,4 @@
-From 24fa4c797ffd812b8ffcb295640dce3b83bc6f2d Mon Sep 17 00:00:00 2001
+From abe1d187e8261bfbf65a98742a3ed3669280bafc Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Tue, 9 Nov 2021 10:09:52 +0000
 Subject: [PATCH 4/8] tensorflow-lite: Enable AveragePool2D nnapi delegation

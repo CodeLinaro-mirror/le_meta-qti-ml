@@ -1,4 +1,4 @@
-From 2a831bbd78fcd0cfffc814f6d422d2f574095fde Mon Sep 17 00:00:00 2001
+From 62e43268b206dde635ea9943459e804dfddb400f Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Mon, 15 Nov 2021 14:45:02 +0000
 Subject: [PATCH 2/8] tensorflow-lite: Integrate Multi-Model Label Image App
@@ -20,10 +20,10 @@ Change-Id: Ia0045d20b8b2788f281e4483030b8f2c0d62d2dd
  create mode 100644 tensorflow/lite/examples/multimodel_label_image/multimodel_label_image.h
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index ddc6f332552..8fd3d3b4ebe 100644
+index 52c718afbd8..cbee22564fc 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
-@@ -587,6 +587,9 @@ add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark)
+@@ -590,6 +590,9 @@ add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark)
  # The label_image example.
  add_subdirectory(${TFLITE_SOURCE_DIR}/examples/label_image)
  
