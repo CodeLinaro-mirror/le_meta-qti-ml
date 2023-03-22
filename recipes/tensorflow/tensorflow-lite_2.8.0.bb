@@ -37,7 +37,6 @@ SRC_URI = "\
 	file://0004-tensorflow-lite-Enable-AveragePool2D-nnapi-delegatio.patch \
 	file://0005-tensorflow-lite-Enable-align-corners-in-Bilinear-res.patch \
 	file://0006-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
-	file://0007-tensorflow-lite-Improve-accuracy-for-depthwise_conv2.patch \
 	file://0008-tensorflow-lite-Fix-missing-symbols-needed-by-gst-pl.patch \
 	file://tensorflow-lite.pc.in \
 	"
@@ -45,6 +44,13 @@ SRC_URI = "\
 S = "${WORKDIR}/git"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
+
+do_cherry_pick() {
+    cd ${OECMAKE_SOURCEPATH}
+    git cherry-pick 5d189740ed607fbaf5b3f61009887b5ea9b89ca5
+}
+
+addtask do_cherry_pick after do_unpack before do_patch
 
 OECMAKE_TARGET_COMPILE += "\
 	benchmark_model \
