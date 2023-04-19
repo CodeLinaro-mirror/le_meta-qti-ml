@@ -19,7 +19,7 @@ DEPENDS += "libcutils"
 
 SRCREV = "2172954aa2b2afd2de4f44b8fd25a1a1ac5f2d3e"
 
-SRC_URI = "git://source.codeaurora.org/quic/la/platform/system/libfmq.git;branch=ks-aosp.lnx.2.0.r12-rel"
+SRC_URI = "${CLO_LA_GIT}/platform/system/libfmq.git;branch=caf_migration/ks-aosp.lnx.2.0.r12-rel"
 SRC_URI += "file://0001-libfmq-Porting-to-Linux-Embedded.patch"
 
 S = "${WORKDIR}/git"
