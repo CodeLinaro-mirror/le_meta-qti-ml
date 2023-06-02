@@ -27,10 +27,10 @@ PACKAGECONFIG ??= " \
 	"
 
 SRCREV = "v${PV}"
-BRANCH = "r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
+BRANCH = "github.com/r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
-	git://github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
+	${CLO_LE_GIT}/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
 	file://0001-tensorflow-lite-Bring-up-TFLite-on-LE-platforms.patch \
 	file://0002-tensorflow-lite-Integrate-Multi-Model-Label-Image-Ap.patch \
 	file://0003-tensorflow-lite-Integrate-TFLite-Accuracy-Tools.patch \
