@@ -19,6 +19,7 @@ DEPENDS = "\
 	flatbuffers \
 	flatbuffers-native \
 	nsync \
+	vulkan-headers \
 	"
 
 PACKAGECONFIG ??= " \
@@ -26,18 +27,17 @@ PACKAGECONFIG ??= " \
 	${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'qti-gpu', '', d)} \
 	"
 
-SRCREV = "v${PV}"
-BRANCH = "r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
+SRCREV = "${AUTOREV}"
+BRANCH = "github.com/r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
-	git://github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
+	${CLO_LE_GIT}/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
 	file://0001-tensorflow-lite-Bring-up-TFLite-on-LE-platforms.patch \
 	file://0002-tensorflow-lite-Integrate-Multi-Model-Label-Image-Ap.patch \
 	file://0003-tensorflow-lite-Integrate-TFLite-Accuracy-Tools.patch \
 	file://0004-tensorflow-lite-Enable-AveragePool2D-nnapi-delegatio.patch \
 	file://0005-tensorflow-lite-Enable-align-corners-in-Bilinear-res.patch \
 	file://0006-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
-	file://0007-tensorflow-lite-Improve-accuracy-for-depthwise_conv2.patch \
 	file://0008-tensorflow-lite-Fix-missing-symbols-needed-by-gst-pl.patch \
 	file://tensorflow-lite.pc.in \
 	"
@@ -45,6 +45,23 @@ SRC_URI = "\
 S = "${WORKDIR}/git"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
+
+do_cherry_pick() {
+    cd ${OECMAKE_SOURCEPATH}
+    git cherry-pick 5d189740ed607fbaf5b3f61009887b5ea9b89ca5
+}
+
+addtask do_cherry_pick after do_unpack before do_patch
+
+do_configure:prepend() {
+    mkdir -p ${WORKDIR}/build
+    cd ${WORKDIR}/build
+    cmake ../git/tensorflow/lite/
+    find ${WORKDIR}/build -name Makefile -exec rm -r {} \;
+    find ${WORKDIR}/build -name cmake_install.cmake -exec rm -r {} \;
+    find ${WORKDIR}/build -name CMakeCache.txt -exec rm -r {} \;
+    find ${WORKDIR}/build -name CMakeFiles -exec rm -rf {} +
+}
 
 OECMAKE_TARGET_COMPILE += "\
 	benchmark_model \
@@ -74,7 +91,7 @@ FILES_${PN}-dev += "${includedir}"
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
 
-do_install_append() {
+do_install:append() {
 
 	local TFLITE_HEADERS=(\
 	"tensorflow/lite" \
