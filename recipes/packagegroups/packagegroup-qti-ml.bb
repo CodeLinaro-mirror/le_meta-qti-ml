@@ -18,4 +18,5 @@ RDEPENDS:packagegroup-qti-ml = ' \
 
 RDEPENDS:packagegroup-qti-ml-tflite = " \
     tensorflow-lite \
+    ${@bb.utils.contains("MACHINE_FEATURES", "qti-tflite-delegate", "libhexagon-nn", "", d)} \
     "
