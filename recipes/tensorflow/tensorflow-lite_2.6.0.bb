@@ -27,11 +27,11 @@ PACKAGECONFIG ??= " \
 	${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'qti-gpu', '', d)} \
 	"
 
-SRCREV = "${AUTOREV}"
-BRANCH = "github.com/r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
+SRCREV = "v${PV}"
+BRANCH = "r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
-	${CLO_LE_GIT}/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
+	git://github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
 	file://0001-tensorflow-lite-Bring-up-TFLite-on-LE-platforms.patch \
 	file://0002-tensorflow-lite-Enhance-TFLite-LE-Build.patch \
 	file://0003-tensorflow-lite-Enable-AveragePool2D-nnapi-delegatio.patch \
@@ -50,15 +50,6 @@ SRC_URI = "\
 S = "${WORKDIR}/git"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite"
-do_configure:prepend() {
-    mkdir -p ${WORKDIR}/build
-    cd ${WORKDIR}/build
-    cmake ../git/tensorflow/lite/
-    find ${WORKDIR}/build -name Makefile -exec rm -r {} \;
-    find ${WORKDIR}/build -name cmake_install.cmake -exec rm -r {} \;
-    find ${WORKDIR}/build -name CMakeCache.txt -exec rm -r {} \;
-    find ${WORKDIR}/build -name CMakeFiles -exec rm -rf {} +
-}
 
 OECMAKE_TARGET_COMPILE += "\
 	benchmark_model \
@@ -88,7 +79,7 @@ FILES_${PN}-dev += "${includedir}"
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
 
-do_install:append() {
+do_install_append() {
 
 	local TFLITE_HEADERS=(\
 	"tensorflow/lite" \
