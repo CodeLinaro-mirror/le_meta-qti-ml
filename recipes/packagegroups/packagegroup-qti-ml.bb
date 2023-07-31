@@ -13,10 +13,10 @@ PACKAGES = ' \
 
 RDEPENDS:packagegroup-qti-ml = ' \
     ${@bb.utils.contains("DISTRO_FEATURES", "tensorflow-lite", "packagegroup-qti-ml-tflite", "", d)} \
-    libgomp \
     libgomp-dev \
     '
 
 RDEPENDS:packagegroup-qti-ml-tflite = " \
     tensorflow-lite \
+    ${@bb.utils.contains("MACHINE_FEATURES", "qti-tflite-delegate", "libhexagon-nn", "", d)} \
     "

@@ -19,6 +19,7 @@ DEPENDS = "\
 	flatbuffers \
 	flatbuffers-native \
 	nsync \
+	vulkan-headers \
 	"
 
 PACKAGECONFIG ??= " \

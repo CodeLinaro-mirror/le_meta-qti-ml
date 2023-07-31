@@ -19,6 +19,8 @@ DEPENDS = "\
 	flatbuffers \
 	flatbuffers-native \
 	nsync \
+	vulkan-headers \
+	libhexagon-nn \
 	"
 
 PACKAGECONFIG ??= " \
