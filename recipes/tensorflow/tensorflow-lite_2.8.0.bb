@@ -19,6 +19,8 @@ DEPENDS = "\
 	flatbuffers \
 	flatbuffers-native \
 	nsync \
+	vulkan-headers \
+	libhexagon-nn \
 	"
 
 PACKAGECONFIG ??= " \
@@ -26,7 +28,7 @@ PACKAGECONFIG ??= " \
 	${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'qti-gpu', '', d)} \
 	"
 
-SRCREV = "v${PV}"
+SRCREV = "${AUTOREV}"
 BRANCH = "github.com/r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
@@ -51,6 +53,16 @@ do_cherry_pick() {
 }
 
 addtask do_cherry_pick after do_unpack before do_patch
+
+do_configure:prepend() {
+    mkdir -p ${WORKDIR}/build
+    cd ${WORKDIR}/build
+    cmake ../git/tensorflow/lite/
+    find ${WORKDIR}/build -name Makefile -exec rm -r {} \;
+    find ${WORKDIR}/build -name cmake_install.cmake -exec rm -r {} \;
+    find ${WORKDIR}/build -name CMakeCache.txt -exec rm -r {} \;
+    find ${WORKDIR}/build -name CMakeFiles -exec rm -rf {} +
+}
 
 OECMAKE_TARGET_COMPILE += "\
 	benchmark_model \
@@ -80,7 +92,7 @@ FILES_${PN}-dev += "${includedir}"
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
 
-do_install_append() {
+do_install:append() {
 
 	local TFLITE_HEADERS=(\
 	"tensorflow/lite" \
