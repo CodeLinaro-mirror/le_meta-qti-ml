@@ -13,6 +13,7 @@ BRANCH = "googletest/v1.10.x"
 SRC_URI = "\
     git://git.codelinaro.org/clo/qsdk/googletest.git;protocol=https;branch=${BRANCH} \
     file://0001-Add-pkg-config-support.patch \
+    file://0002-To-solve-build-error-for-undeclare-variable.patch \
 "
 SRC_URI[sha256sum] = "8ee3fb18a5f547e35f76fe3ce773f0a0c789f34291e310cd8217deb9e7478c54"
 

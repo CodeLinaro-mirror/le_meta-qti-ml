@@ -1,0 +1,40 @@
+From 105eeae01d91adb12b69009763e76aea0246a876 Mon Sep 17 00:00:00 2001
+From: kkummari <quic_kkummari@quicinc.com>
+Date: Fri, 13 Oct 2023 03:35:14 -0700
+Subject: [PATCH] To solve build error for undeclare variable
+
+dummy variable is undeclare and used so need declaration
+
+Signed-off-by: kkummari <quic_kkummari@quicinc.com>
+---
+ googletest/src/gtest-death-test.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 googletest/src/gtest-death-test.cc
+
+diff --git a/googletest/src/gtest-death-test.cc b/googletest/src/gtest-death-test.cc
+old mode 100644
+new mode 100755
+index da09a1cf..43cbd78a
+--- a/googletest/src/gtest-death-test.cc
++++ b/googletest/src/gtest-death-test.cc
+@@ -1288,7 +1288,7 @@ static void StackLowerThanAddress(const void* ptr,
+ // making comparison result unpredictable.
+ GTEST_ATTRIBUTE_NO_SANITIZE_HWADDRESS_
+ static void StackLowerThanAddress(const void* ptr, bool* result) {
+-  int dummy;
++  int dummy = 0;
+   *result = (&dummy < ptr);
+ }
+ 
+@@ -1296,7 +1296,7 @@ static void StackLowerThanAddress(const void* ptr, bool* result) {
+ GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
+ GTEST_ATTRIBUTE_NO_SANITIZE_HWADDRESS_
+ static bool StackGrowsDown() {
+-  int dummy;
++  int dummy = 0;
+   bool result;
+   StackLowerThanAddress(&dummy, &result);
+   return result;
+-- 
+2.34.1
+
