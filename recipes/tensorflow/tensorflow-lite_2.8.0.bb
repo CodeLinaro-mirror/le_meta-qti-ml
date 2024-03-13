@@ -40,6 +40,7 @@ SRC_URI = "\
 	file://0005-tensorflow-lite-Enable-align-corners-in-Bilinear-res.patch \
 	file://0006-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
 	file://0008-tensorflow-lite-Fix-missing-symbols-needed-by-gst-pl.patch \
+        file://0009-Tensorflow-lite-XNNPACK-and-FP16-codebase-github-to-.patch \
 	file://tensorflow-lite.pc.in \
 	"
 
