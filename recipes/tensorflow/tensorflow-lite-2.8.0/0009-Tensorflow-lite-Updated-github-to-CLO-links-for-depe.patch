@@ -1,0 +1,398 @@
+This patch file is from Qualcomm Innovation Center, Inc. and is provided under the following license:
+Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+SPDX-License-Identifier: BSD-3-Clause-Clear
+
+From 1980e9c87c70cbaf9e24f05c64afa8671e8c972d Mon Sep 17 00:00:00 2001
+From: Tushar Darote <quic_tdarote@quicinc.com>
+Date: Fri, 29 Mar 2024 12:24:43 +0530
+Subject: [PATCH] Tensorflow-lite: Updated github to CLO links for dependacy of
+ tflite
+
+Updated CLO link for cpuinfo, farmhash, opencl-headers, xnnpack, FP16,
+Vulkan-Headers, googletest, nsync, re2, ruy, flatbuffer and egl-registry
+
+Signed-off-by: Tushar Darote <quic_tdarote@quicinc.com>
+---
+ tensorflow/lite/g3doc/performance/gpu_advanced.md        | 2 +-
+ tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake | 2 +-
+ tensorflow/lite/tools/cmake/modules/Findnsync.cmake      | 2 +-
+ tensorflow/lite/tools/cmake/modules/Findre2.cmake        | 2 +-
+ tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake     | 2 +-
+ tensorflow/lite/tools/cmake/modules/clog.cmake           | 2 +-
+ tensorflow/lite/tools/cmake/modules/cpuinfo.cmake        | 2 +-
+ tensorflow/lite/tools/cmake/modules/egl_headers.cmake    | 2 +-
+ tensorflow/lite/tools/cmake/modules/farmhash.cmake       | 2 +-
+ tensorflow/lite/tools/cmake/modules/flatbuffers.cmake    | 2 +-
+ tensorflow/lite/tools/cmake/modules/fp16_headers.cmake   | 2 +-
+ tensorflow/lite/tools/cmake/modules/opencl_headers.cmake | 2 +-
+ tensorflow/lite/tools/cmake/modules/ruy.cmake            | 2 +-
+ tensorflow/lite/tools/cmake/modules/vulkan_headers.cmake | 2 +-
+ tensorflow/lite/tools/cmake/modules/xnnpack.cmake        | 2 +-
+ tensorflow/workspace2.bzl                                | 8 ++++----
+ third_party/FP16/workspace.bzl                           | 2 +-
+ third_party/absl/workspace.bzl                           | 2 +-
+ third_party/clog/workspace.bzl                           | 2 +-
+ third_party/cpuinfo/workspace.bzl                        | 2 +-
+ third_party/farmhash/workspace.bzl                       | 4 ++--
+ third_party/flatbuffers/workspace.bzl                    | 2 +-
+ third_party/opencl_headers/workspace.bzl                 | 2 +-
+ third_party/ruy/workspace.bzl                            | 2 +-
+ third_party/vulkan_headers/workspace.bzl                 | 2 +-
+ 25 files changed, 29 insertions(+), 29 deletions(-)
+
+diff --git a/tensorflow/lite/g3doc/performance/gpu_advanced.md b/tensorflow/lite/g3doc/performance/gpu_advanced.md
+index 271cbb68de9..74a5b54505b 100644
+--- a/tensorflow/lite/g3doc/performance/gpu_advanced.md
++++ b/tensorflow/lite/g3doc/performance/gpu_advanced.md
+@@ -493,7 +493,7 @@ implementation rules:
+     which points to a location that is private to the current application.
+ *   The model token must be unique to the device for the specific model. You can
+     compute a model token by generating a fingerprint from the model data (e.g.
+-    using [`farmhash::Fingerprint64`](https://github.com/google/farmhash)).
++    using [`farmhash::Fingerprint64`](https://git.codelinaro.org/clo/le/external/github/google/farmhash)).
+ 
+ Note: This feature requires the
+ [OpenCL SDK](https://github.com/KhronosGroup/OpenCL-SDK) for serialization
+diff --git a/tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake b/tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake
+index 4fe0b18b040..62db5b88e49 100644
+--- a/tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake
++++ b/tensorflow/lite/tools/cmake/modules/Findgoogletest.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   googletest
+-  GIT_REPOSITORY https://github.com/google/googletest.git
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/googletest.git
+   GIT_TAG release-1.10.0
+   GIT_SHALLOW TRUE
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/Findnsync.cmake b/tensorflow/lite/tools/cmake/modules/Findnsync.cmake
+index 66b9d40a04f..d4bac19bf30 100644
+--- a/tensorflow/lite/tools/cmake/modules/Findnsync.cmake
++++ b/tensorflow/lite/tools/cmake/modules/Findnsync.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   nsync
+-  GIT_REPOSITORY https://github.com/google/nsync.git
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/nsync.git
+   GIT_TAG 1.22.0
+   GIT_SHALLOW TRUE
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/Findre2.cmake b/tensorflow/lite/tools/cmake/modules/Findre2.cmake
+index 02e61e0383c..9cfdca1700a 100644
+--- a/tensorflow/lite/tools/cmake/modules/Findre2.cmake
++++ b/tensorflow/lite/tools/cmake/modules/Findre2.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   re2
+-  GIT_REPOSITORY https://github.com/google/re2.git
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/re2.git
+   GIT_TAG 2021-02-02
+   GIT_SHALLOW TRUE
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake b/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake
+index b17f9b388d2..b4a08f41a80 100644
+--- a/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake
++++ b/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake
+@@ -22,7 +22,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   abseil-cpp
+-  GIT_REPOSITORY https://github.com/abseil/abseil-cpp
++  GIT_REPOSITORY https://git.codelinaro.org/clo/la/platform/external/abseil-cpp
+   # Sync with tensorflow/third_party/absl/workspace.bzl
+   GIT_TAG 997aaf3a28308eba1b9156aa35ab7bca9688e9f6
+   GIT_SHALLOW TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/clog.cmake b/tensorflow/lite/tools/cmake/modules/clog.cmake
+index 93f10fb73c5..7e332f566b6 100644
+--- a/tensorflow/lite/tools/cmake/modules/clog.cmake
++++ b/tensorflow/lite/tools/cmake/modules/clog.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   clog
+-  GIT_REPOSITORY https://github.com/pytorch/cpuinfo
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/github/pytorch/cpuinfo
+   # Sync with tensorflow/third_party/clog/workspace.bzl
+   GIT_TAG d5e37adf1406cf899d7d9ec1d317c47506ccb970
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake b/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
+index 71f7f933828..8b1f1480dcb 100644
+--- a/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
++++ b/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   cpuinfo
+-  GIT_REPOSITORY https://github.com/pytorch/cpuinfo
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/github/pytorch/cpuinfo
+   # Sync with tensorflow/third_party/cpuinfo/workspace.bzl
+   GIT_TAG 5916273f79a21551890fd3d56fc5375a78d1598d
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/egl_headers.cmake b/tensorflow/lite/tools/cmake/modules/egl_headers.cmake
+index 400f4fc779d..91bb7b4eeff 100644
+--- a/tensorflow/lite/tools/cmake/modules/egl_headers.cmake
++++ b/tensorflow/lite/tools/cmake/modules/egl_headers.cmake
+@@ -21,7 +21,7 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   egl_headers
+-  GIT_REPOSITORY https://github.com/KhronosGroup/EGL-Registry.git
++  GIT_REPOSITORY https://git.codelinaro.org/clo/la/platform/external/egl-registry.git
+   # No reference in TensorFlow Bazel rule since it's used for GPU Delegate
+   # build without using Android NDK.
+   GIT_TAG 649981109e263b737e7735933c90626c29a306f2
+diff --git a/tensorflow/lite/tools/cmake/modules/farmhash.cmake b/tensorflow/lite/tools/cmake/modules/farmhash.cmake
+index 7a5160fa7eb..e701f95e48e 100644
+--- a/tensorflow/lite/tools/cmake/modules/farmhash.cmake
++++ b/tensorflow/lite/tools/cmake/modules/farmhash.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   farmhash
+-  GIT_REPOSITORY https://github.com/google/farmhash
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/github/google/farmhash
+   # Sync with tensorflow/third_party/farmhash/workspace.bzl
+   GIT_TAG 0d859a811870d10f53a594927d0d0b97573ad06d
+   # It's not currently possible to shallow clone with a GIT TAG
+diff --git a/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake b/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
+index a3d01fd962d..37e5f9dd4a3 100644
+--- a/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
++++ b/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
+@@ -21,7 +21,7 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   flatbuffers
+-  GIT_REPOSITORY https://github.com/google/flatbuffers
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/flatbuffers
+   # Sync with tensorflow/third_party/flatbuffers/workspace.bzl
+   GIT_TAG v1.12.0
+   GIT_SHALLOW TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/fp16_headers.cmake b/tensorflow/lite/tools/cmake/modules/fp16_headers.cmake
+index 0d039c01328..8ae97654269 100644
+--- a/tensorflow/lite/tools/cmake/modules/fp16_headers.cmake
++++ b/tensorflow/lite/tools/cmake/modules/fp16_headers.cmake
+@@ -22,7 +22,7 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   fp16_headers
+-  GIT_REPOSITORY https://github.com/Maratyszcza/FP16
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/github.com/maratyszcza/FP16
+   # Sync with https://github.com/google/XNNPACK/blob/master/cmake/DownloadFP16.cmake
+   GIT_TAG 0a92994d729ff76a58f692d3028ca1b64b145d91
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/opencl_headers.cmake b/tensorflow/lite/tools/cmake/modules/opencl_headers.cmake
+index 8afbe444dc6..ff3aa0851b8 100644
+--- a/tensorflow/lite/tools/cmake/modules/opencl_headers.cmake
++++ b/tensorflow/lite/tools/cmake/modules/opencl_headers.cmake
+@@ -21,7 +21,7 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   opencl_headers
+-  GIT_REPOSITORY https://github.com/KhronosGroup/OpenCL-Headers
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/github/khronosgroup/OpenCL-Headers
+   # Sync with tensorflow/third_party/opencl_headers/workspace.bzl
+   GIT_TAG 0d5f18c6e7196863bc1557a693f1509adfcee056
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/ruy.cmake b/tensorflow/lite/tools/cmake/modules/ruy.cmake
+index 752f527cf1b..f26a52204fa 100644
+--- a/tensorflow/lite/tools/cmake/modules/ruy.cmake
++++ b/tensorflow/lite/tools/cmake/modules/ruy.cmake
+@@ -21,7 +21,7 @@ include(OverridableFetchContent)
+ 
+ OverridableFetchContent_Declare(
+   ruy
+-  GIT_REPOSITORY https://github.com/google/ruy
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/ruy
+   # Sync with tensorflow/third_party/ruy/workspace.bzl
+   GIT_TAG e6c1b8dc8a8b00ee74e7268aac8b18d7260ab1ce
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/vulkan_headers.cmake b/tensorflow/lite/tools/cmake/modules/vulkan_headers.cmake
+index 7e1335a147c..5783cd642b2 100644
+--- a/tensorflow/lite/tools/cmake/modules/vulkan_headers.cmake
++++ b/tensorflow/lite/tools/cmake/modules/vulkan_headers.cmake
+@@ -21,7 +21,7 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   vulkan_headers
+-  GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/khronosgroup/vulkan-headers
+   # Sync with tensorflow/third_party/vulkan_headers/workspace.bzl
+   GIT_TAG ec2db85225ab410bc6829251bef6c578aaed5868
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
+index e6cd5fd7482..85394a70bc4 100644
+--- a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
++++ b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
+@@ -21,7 +21,7 @@ include(FetchContent)
+ 
+ OverridableFetchContent_Declare(
+   xnnpack
+-  GIT_REPOSITORY https://github.com/google/XNNPACK
++  GIT_REPOSITORY https://git.codelinaro.org/clo/le/external/github.com/google/XNNPACK
+   # Sync with tensorflow/workspace2.bzl
+   GIT_TAG 113092317754c7dea47bfb3cb49c4f59c3c1fa10
+   GIT_PROGRESS TRUE
+diff --git a/tensorflow/workspace2.bzl b/tensorflow/workspace2.bzl
+index 0129ff7f420..31100c38bd4 100644
+--- a/tensorflow/workspace2.bzl
++++ b/tensorflow/workspace2.bzl
+@@ -137,7 +137,7 @@ def _tf_repositories():
+         name = "XNNPACK",
+         sha256 = "8ce46328c9ac5f1b8359e5c4352a2bbafc39614eae7f647d32a6d43cb110ad01",
+         strip_prefix = "XNNPACK-113092317754c7dea47bfb3cb49c4f59c3c1fa10",
+-        urls = tf_mirror_urls("https://github.com/google/XNNPACK/archive/113092317754c7dea47bfb3cb49c4f59c3c1fa10.zip"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github.com/google/XNNPACK/-/archive/113092317754c7dea47bfb3cb49c4f59c3c1fa10.zip"),
+     )
+     # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/xnnpack.cmake)
+ 
+@@ -245,7 +245,7 @@ def _tf_repositories():
+         sha256 = "d070e2ffc5476c496a6a872a6f246bfddce8e7797d6ba605a7c8d72866743bf9",
+         strip_prefix = "re2-506cfa4bffd060c06ec338ce50ea3468daa6c814",
+         system_build_file = "//third_party/systemlibs:re2.BUILD",
+-        urls = tf_mirror_urls("https://github.com/google/re2/archive/506cfa4bffd060c06ec338ce50ea3468daa6c814.tar.gz"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/re2/-/archive/506cfa4bffd060c06ec338ce50ea3468daa6c814.tar.gz"),
+     )
+ 
+     tf_http_archive(
+@@ -470,14 +470,14 @@ def _tf_repositories():
+         sha256 = "caf32e6b3d478b78cff6c2ba009c3400f8251f646804bcb65465666a9cea93c4",
+         strip_prefix = "nsync-1.22.0",
+         system_build_file = "//third_party/systemlibs:nsync.BUILD",
+-        urls = tf_mirror_urls("https://github.com/google/nsync/archive/1.22.0.tar.gz"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/nsync/-/archive/1.22.0.tar.gz"),
+     )
+ 
+     tf_http_archive(
+         name = "com_google_googletest",
+         sha256 = "bc1cc26d1120f5a7e9eb450751c0b24160734e46a02823a573f3c6b6c0a574a7",
+         strip_prefix = "googletest-e2c06aa2497e330bab1c1a03d02f7c5096eb5b0b",
+-        urls = tf_mirror_urls("https://github.com/google/googletest/archive/e2c06aa2497e330bab1c1a03d02f7c5096eb5b0b.zip"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/googletest/-/archive/e2c06aa2497e330bab1c1a03d02f7c5096eb5b0b.zip"),
+     )
+ 
+     tf_http_archive(
+diff --git a/third_party/FP16/workspace.bzl b/third_party/FP16/workspace.bzl
+index 4753d617959..5f45ff7538b 100644
+--- a/third_party/FP16/workspace.bzl
++++ b/third_party/FP16/workspace.bzl
+@@ -7,6 +7,6 @@ def repo():
+         name = "FP16",
+         strip_prefix = "FP16-4dfe081cf6bcd15db339cf2680b9281b8451eeb3",
+         sha256 = "d973501a40c55126b31accc2d9f08d931ec3cc190c0430309a5e341d3c0ce32a",
+-        urls = tf_mirror_urls("https://github.com/Maratyszcza/FP16/archive/4dfe081cf6bcd15db339cf2680b9281b8451eeb3.zip"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github.com/maratyszcza/FP16/-/archive/4dfe081cf6bcd15db339cf2680b9281b8451eeb3.zip"),
+         build_file = "//third_party/FP16:FP16.BUILD",
+     )
+diff --git a/third_party/absl/workspace.bzl b/third_party/absl/workspace.bzl
+index 8ac3d89e33d..0bacfb62d6f 100644
+--- a/third_party/absl/workspace.bzl
++++ b/third_party/absl/workspace.bzl
+@@ -18,5 +18,5 @@ def repo():
+         # TODO(mihaimaruseac): Remove the patch when https://github.com/abseil/abseil-cpp/issues/326 is resolved
+         patch_file = ["//third_party/absl:com_google_absl_fix_mac_and_nvcc_build.patch"],
+         strip_prefix = "abseil-cpp-{commit}".format(commit = ABSL_COMMIT),
+-        urls = tf_mirror_urls("https://github.com/abseil/abseil-cpp/archive/{commit}.tar.gz".format(commit = ABSL_COMMIT)),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/la/platform/external/abseil-cpp/-/archive/{commit}.tar.gz".format(commit = ABSL_COMMIT)),
+     )
+diff --git a/third_party/clog/workspace.bzl b/third_party/clog/workspace.bzl
+index 09aab8bb658..0c0b9c5bd75 100644
+--- a/third_party/clog/workspace.bzl
++++ b/third_party/clog/workspace.bzl
+@@ -7,6 +7,6 @@ def repo():
+         name = "clog",
+         strip_prefix = "cpuinfo-d5e37adf1406cf899d7d9ec1d317c47506ccb970",
+         sha256 = "3f2dc1970f397a0e59db72f9fca6ff144b216895c1d606f6c94a507c1e53a025",
+-        urls = tf_mirror_urls("https://github.com/pytorch/cpuinfo/archive/d5e37adf1406cf899d7d9ec1d317c47506ccb970.tar.gz"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github/pytorch/cpuinfo/-/archive/d5e37adf1406cf899d7d9ec1d317c47506ccb970.tar.gz"),
+         build_file = "//third_party/clog:clog.BUILD",
+     )
+diff --git a/third_party/cpuinfo/workspace.bzl b/third_party/cpuinfo/workspace.bzl
+index 32b36b31020..343be96aa9f 100644
+--- a/third_party/cpuinfo/workspace.bzl
++++ b/third_party/cpuinfo/workspace.bzl
+@@ -7,6 +7,6 @@ def repo():
+         name = "cpuinfo",
+         strip_prefix = "cpuinfo-5916273f79a21551890fd3d56fc5375a78d1598d",
+         sha256 = "2a160c527d3c58085ce260f34f9e2b161adc009b34186a2baf24e74376e89e6d",
+-        urls = tf_mirror_urls("https://github.com/pytorch/cpuinfo/archive/5916273f79a21551890fd3d56fc5375a78d1598d.zip"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github/pytorch/cpuinfo/-/archive/5916273f79a21551890fd3d56fc5375a78d1598d.zip"),
+         build_file = "//third_party/cpuinfo:cpuinfo.BUILD",
+     )
+diff --git a/third_party/farmhash/workspace.bzl b/third_party/farmhash/workspace.bzl
+index f273313891d..0e00bb91c48 100644
+--- a/third_party/farmhash/workspace.bzl
++++ b/third_party/farmhash/workspace.bzl
+@@ -16,7 +16,7 @@ def repo():
+         build_file = "//third_party/farmhash:farmhash.BUILD",
+         sha256 = FARMHASH_SHA256,
+         strip_prefix = "farmhash-{commit}".format(commit = FARMHASH_COMMIT),
+-        urls = tf_mirror_urls("https://github.com/google/farmhash/archive/{commit}.tar.gz".format(commit = FARMHASH_COMMIT)),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github/google/farmhash/-/archive/{commit}.tar.gz".format(commit = FARMHASH_COMMIT)),
+     )
+ 
+     tf_http_archive(
+@@ -25,5 +25,5 @@ def repo():
+         patch_file = ["//third_party/farmhash:farmhash_support_cuda.patch"],
+         sha256 = FARMHASH_SHA256,
+         strip_prefix = "farmhash-{commit}".format(commit = FARMHASH_COMMIT),
+-        urls = tf_mirror_urls("https://github.com/google/farmhash/archive/{commit}.tar.gz".format(commit = FARMHASH_COMMIT)),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github/google/farmhash/-/archive/{commit}.tar.gz".format(commit = FARMHASH_COMMIT)),
+     )
+diff --git a/third_party/flatbuffers/workspace.bzl b/third_party/flatbuffers/workspace.bzl
+index 59c1fd9ea43..fb66eaf6f44 100644
+--- a/third_party/flatbuffers/workspace.bzl
++++ b/third_party/flatbuffers/workspace.bzl
+@@ -7,7 +7,7 @@ def repo():
+         name = "flatbuffers",
+         strip_prefix = "flatbuffers-1.12.0",
+         sha256 = "62f2223fb9181d1d6338451375628975775f7522185266cd5296571ac152bc45",
+-        urls = tf_mirror_urls("https://github.com/google/flatbuffers/archive/v1.12.0.tar.gz"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/flatbuffers/-/archive/v1.12.0.tar.gz"),
+         build_file = "//third_party/flatbuffers:flatbuffers.BUILD",
+         system_build_file = "//third_party/flatbuffers:BUILD.system",
+         link_files = {
+diff --git a/third_party/opencl_headers/workspace.bzl b/third_party/opencl_headers/workspace.bzl
+index 04f1ee0d6f7..bb069870629 100644
+--- a/third_party/opencl_headers/workspace.bzl
++++ b/third_party/opencl_headers/workspace.bzl
+@@ -8,7 +8,7 @@ def repo():
+         # LINT.IfChange
+         strip_prefix = "OpenCL-Headers-0d5f18c6e7196863bc1557a693f1509adfcee056",
+         sha256 = "03cbc1fd449399be0422cdb021400f63958ef2c5a7c099a0d8f36a705b312f53",
+-        urls = tf_mirror_urls("https://github.com/KhronosGroup/OpenCL-Headers/archive/0d5f18c6e7196863bc1557a693f1509adfcee056.tar.gz"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/github/khronosgroup/OpenCL-Headers/-/archive/0d5f18c6e7196863bc1557a693f1509adfcee056.tar.gz"),
+         # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/opencl_headers.cmake)
+         build_file = "//third_party/opencl_headers:opencl_headers.BUILD",
+     )
+diff --git a/third_party/ruy/workspace.bzl b/third_party/ruy/workspace.bzl
+index 43c55444af1..744aa5de1ec 100644
+--- a/third_party/ruy/workspace.bzl
++++ b/third_party/ruy/workspace.bzl
+@@ -8,7 +8,7 @@ def repo():
+         # LINT.IfChange
+         sha256 = "fa9a0b9041095817bc3533f7b125c3b4044570c0b3ee6c436d2d29dae001c06b",
+         strip_prefix = "ruy-e6c1b8dc8a8b00ee74e7268aac8b18d7260ab1ce",
+-        urls = tf_mirror_urls("https://github.com/google/ruy/archive/e6c1b8dc8a8b00ee74e7268aac8b18d7260ab1ce.zip"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/ruy/-/archive/e6c1b8dc8a8b00ee74e7268aac8b18d7260ab1ce.zip"),
+         # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/ruy.cmake)
+         build_file = "//third_party/ruy:BUILD",
+     )
+diff --git a/third_party/vulkan_headers/workspace.bzl b/third_party/vulkan_headers/workspace.bzl
+index d9fd8d50d40..7ba85165fbe 100644
+--- a/third_party/vulkan_headers/workspace.bzl
++++ b/third_party/vulkan_headers/workspace.bzl
+@@ -11,7 +11,7 @@ def repo():
+         link_files = {
+             "//third_party/vulkan_headers:tensorflow/vulkan_hpp_dispatch_loader_dynamic.cc": "tensorflow/vulkan_hpp_dispatch_loader_dynamic.cc",
+         },
+-        urls = tf_mirror_urls("https://github.com/KhronosGroup/Vulkan-Headers/archive/ec2db85225ab410bc6829251bef6c578aaed5868.tar.gz"),
++        urls = tf_mirror_urls("https://git.codelinaro.org/clo/le/external/khronosgroup/vulkan-headers/-/archive/ec2db85225ab410bc6829251bef6c578aaed5868.tar.gz"),
+         # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/vulkan_headers.cmake)
+         build_file = "//third_party/vulkan_headers:vulkan_headers.BUILD",
+     )
+-- 
+2.25.1
+
