@@ -1,0 +1,102 @@
+From afa0bb3d0d48ac6674c5f3a8bcc8486e8acdae35 Mon Sep 17 00:00:00 2001
+From: Mustafa Ali <quic_mustali@quicinc.com>
+Date: Wed, 22 Mar 2023 13:43:47 +0000
+Subject: [PATCH 1/9] Revert "Remove the clog CMake module"
+
+This reverts commit 6b9d6ac060803d5b7e05098a9a261ce667db5f6f.
+
+Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+
+Change-Id: I62a483ab754a07c56388c85ef0eaa08c22a0a5be
+---
+ tensorflow/lite/CMakeLists.txt                |  1 +
+ .../lite/tools/cmake/modules/Findclog.cmake   | 16 ++++++++
+ .../lite/tools/cmake/modules/clog.cmake       | 41 +++++++++++++++++++
+ 3 files changed, 58 insertions(+)
+ create mode 100644 tensorflow/lite/tools/cmake/modules/Findclog.cmake
+ create mode 100644 tensorflow/lite/tools/cmake/modules/clog.cmake
+
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+index 073b29c4860..ed7cf9d40d7 100644
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -146,6 +146,7 @@ find_package(fft2d REQUIRED)
+ find_package(Flatbuffers REQUIRED)
+ find_package(gemmlowp REQUIRED)
+ find_package(NEON_2_SSE REQUIRED)
++find_package(clog REQUIRED)
+ find_package(cpuinfo REQUIRED)  #CPUINFO is used by XNNPACK and RUY library
+ find_package(ruy REQUIRED)
+ set(TF_TARGET_PRIVATE_OPTIONS "")
+diff --git a/tensorflow/lite/tools/cmake/modules/Findclog.cmake b/tensorflow/lite/tools/cmake/modules/Findclog.cmake
+new file mode 100644
+index 00000000000..6ed7e9ad6d2
+--- /dev/null
++++ b/tensorflow/lite/tools/cmake/modules/Findclog.cmake
+@@ -0,0 +1,16 @@
++#
++# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++include(clog)
+diff --git a/tensorflow/lite/tools/cmake/modules/clog.cmake b/tensorflow/lite/tools/cmake/modules/clog.cmake
+new file mode 100644
+index 00000000000..6caa2cf489e
+--- /dev/null
++++ b/tensorflow/lite/tools/cmake/modules/clog.cmake
+@@ -0,0 +1,41 @@
++#
++# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++if(TARGET clog OR clog_POPULATED)
++  return()
++endif()
++
++include(OverridableFetchContent)
++
++OverridableFetchContent_Declare(
++  clog
++  GIT_REPOSITORY https://github.com/pytorch/cpuinfo
++  # Sync with tensorflow/third_party/clog/workspace.bzl
++  GIT_TAG 5e63739504f0f8e18e941bd63b2d6d42536c7d90
++  GIT_PROGRESS TRUE
++  SOURCE_DIR "${CMAKE_BINARY_DIR}/clog"
++)
++OverridableFetchContent_GetProperties(clog)
++if(NOT clog_POPULATED)
++  OverridableFetchContent_Populate(clog)
++endif()
++
++set(CLOG_SOURCE_DIR "${clog_SOURCE_DIR}" CACHE PATH "CLOG source directory")
++set(CLOG_BUILD_TESTS OFF CACHE BOOL "Disable CLOG tests")
++
++add_subdirectory(
++  "${clog_SOURCE_DIR}/deps/clog"
++  "${clog_BINARY_DIR}"
++)
+-- 
+2.17.1
+

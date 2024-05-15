@@ -1,0 +1,29 @@
+From fb8740cfd1e69d5f02103f0a6491f97864d478dd Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Wed, 8 Feb 2023 09:54:17 +0200
+Subject: [PATCH 3/9] tensorflow-lite: Disable Fortran compiler check
+
+- Disable Fortran compiler check
+
+Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+
+Change-Id: I3003e7413ab353d876320bb2ee4cefa7af223e36
+---
+ tensorflow/lite/tools/cmake/modules/eigen.cmake | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tensorflow/lite/tools/cmake/modules/eigen.cmake b/tensorflow/lite/tools/cmake/modules/eigen.cmake
+index 66dfad20a2e..6775ab8d3c4 100644
+--- a/tensorflow/lite/tools/cmake/modules/eigen.cmake
++++ b/tensorflow/lite/tools/cmake/modules/eigen.cmake
+@@ -46,6 +46,7 @@ if(NOT EIGEN_DISABLED_FORTRAN_COMPILER_CHECK)
+         set(\${language_works} OFF PARENT_SCOPE)
+       endfunction()"
+   )
++  execute_process(COMMAND sed -i "s/include(CMakeDetermineFortranCompiler)//g" ${eigen_SOURCE_DIR}/CMakeLists.txt)
+ endif()
+ # Patch Eigen to disable benchmark suite.
+ if(NOT EIGEN_BUILD_BTL)
+-- 
+2.17.1
+
