@@ -24,4 +24,4 @@ EXTRA_OECMAKE = "-DBUILD_SHARED_LIBS=ON"
 BBCLASSEXTEND = "native nativesdk"
 
 FILES_SOLIBSDEV = ""
-FILES_${PN} += "${libdir}/*.so"
+FILES:${PN} += "${libdir}/*.so"
