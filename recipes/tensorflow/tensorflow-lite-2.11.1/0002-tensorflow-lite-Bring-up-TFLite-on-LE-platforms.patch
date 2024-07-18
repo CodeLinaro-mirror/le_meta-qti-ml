@@ -1,7 +1,7 @@
-From f44edce6968502713cd370589027ce68b8e4090b Mon Sep 17 00:00:00 2001
+From 713324d9b92014eb6d0492f7fa296d5a0aefc4f3 Mon Sep 17 00:00:00 2001
 From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 Date: Wed, 8 Feb 2023 09:54:12 +0200
-Subject: [PATCH 2/9] tensorflow-lite: Bring-up TFLite on LE platforms
+Subject: [PATCH 2/2] tensorflow-lite: Bring-up TFLite on LE platforms
 
 - Add additional optimization compile time flags
 - Add LE specific folders for loading dsp library
@@ -13,7 +13,7 @@ Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
 
 Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
 ---
- tensorflow/lite/CMakeLists.txt                |  102 +-
+ tensorflow/lite/CMakeLists.txt                |  101 +-
  tensorflow/lite/c/CMakeLists.txt              |   22 +-
  tensorflow/lite/c/dummy.cc                    |   53 +
  tensorflow/lite/c/version_script.lds          |    1 +
@@ -44,7 +44,7 @@ Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
  .../lite/tools/cmake/modules/xnnpack.cmake    |    1 +
  tensorflow/lite/tools/evaluation/utils.cc     |   44 +-
  tensorflow/lite/tools/evaluation/utils.h      |   42 +-
- 31 files changed, 5616 insertions(+), 41 deletions(-)
+ 31 files changed, 5616 insertions(+), 40 deletions(-)
  create mode 100644 tensorflow/lite/c/dummy.cc
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/AEEStdDef.h
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/AEEStdErr.h
@@ -57,7 +57,7 @@ Change-Id: Ia59900d14cb5c7e6a9b4c274c553ae67d8eb10a3
  create mode 100644 tensorflow/lite/delegates/hexagon/hexagon/remote.h
 
 diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
-index ed7cf9d40d7..d2f5601d612 100644
+index ed7cf9d4..36e8b9a0 100644
 --- a/tensorflow/lite/CMakeLists.txt
 +++ b/tensorflow/lite/CMakeLists.txt
 @@ -33,6 +33,21 @@ if(NOT CMAKE_BUILD_TYPE)
@@ -148,11 +148,10 @@ index ed7cf9d40d7..d2f5601d612 100644
    list(APPEND TFLITE_NNAPI_SRCS
      "${TFLITE_SOURCE_DIR}/nnapi/sl/SupportLibrary.cc"
    )
-@@ -408,13 +436,65 @@ if(TFLITE_ENABLE_XNNPACK)
-   list(APPEND TFLITE_TARGET_DEPENDENCIES
+@@ -409,12 +437,65 @@ if(TFLITE_ENABLE_XNNPACK)
      XNNPACK
    )
--  list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DTFLITE_BUILD_WITH_XNNPACK_DELEGATE")
+   list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DTFLITE_BUILD_WITH_XNNPACK_DELEGATE")
 +else()
 +  remove_definitions(-DTFLITE_ENABLE_XNNPACK)
 +endif()
@@ -215,7 +214,7 @@ index ed7cf9d40d7..d2f5601d612 100644
  endif()
  populate_tflite_source_vars("experimental/remat"
    TFLITE_EXPERIMENTAL_REMAT_SRCS
-@@ -478,6 +558,16 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
+@@ -478,6 +559,16 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
    )
  endif()
  
@@ -232,7 +231,7 @@ index ed7cf9d40d7..d2f5601d612 100644
  # TFLite library
  set(_ALL_TFLITE_SRCS
    ${TFLITE_CORE_API_SRCS}
-@@ -490,6 +580,7 @@ set(_ALL_TFLITE_SRCS
+@@ -490,6 +581,7 @@ set(_ALL_TFLITE_SRCS
    ${TFLITE_DELEGATES_XNNPACK_SRCS}
    ${TFLITE_DELEGATES_EXTERNAL_SRCS}
    ${TFLITE_EXPERIMENTAL_REMAT_SRCS}
@@ -240,7 +239,7 @@ index ed7cf9d40d7..d2f5601d612 100644
    ${TFLITE_EXPERIMENTAL_RESOURCE_SRCS}
    ${TFLITE_EXPERIMENTAL_RUY_PROFILER_SRCS}
    ${TFLITE_EXPERIMENTAL_RUY_SRCS}
-@@ -516,6 +607,9 @@ set(_ALL_TFLITE_HDRS ${_ALL_TFLITE_SRCS})
+@@ -516,6 +608,9 @@ set(_ALL_TFLITE_HDRS ${_ALL_TFLITE_SRCS})
  list(FILTER _ALL_TFLITE_HDRS INCLUDE REGEX ".*\\.h$")
  target_include_directories(tensorflow-lite
    PUBLIC $<BUILD_INTERFACE:${TENSORFLOW_SOURCE_DIR}> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -250,7 +249,7 @@ index ed7cf9d40d7..d2f5601d612 100644
  )
  target_link_libraries(tensorflow-lite
    PUBLIC
-@@ -536,6 +630,8 @@ target_link_libraries(tensorflow-lite
+@@ -536,6 +631,8 @@ target_link_libraries(tensorflow-lite
      ${TFLITE_TARGET_DEPENDENCIES}
  )
  
@@ -260,7 +259,7 @@ index ed7cf9d40d7..d2f5601d612 100644
    list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DTFL_STATIC_LIBRARY_BUILD")
  endif()
 diff --git a/tensorflow/lite/c/CMakeLists.txt b/tensorflow/lite/c/CMakeLists.txt
-index 321345dad8d..a8e9a2179c1 100644
+index 321345da..a8e9a217 100644
 --- a/tensorflow/lite/c/CMakeLists.txt
 +++ b/tensorflow/lite/c/CMakeLists.txt
 @@ -14,6 +14,21 @@
@@ -313,7 +312,7 @@ index 321345dad8d..a8e9a2179c1 100644
  )
 diff --git a/tensorflow/lite/c/dummy.cc b/tensorflow/lite/c/dummy.cc
 new file mode 100644
-index 00000000000..36fafbc00fd
+index 00000000..36fafbc0
 --- /dev/null
 +++ b/tensorflow/lite/c/dummy.cc
 @@ -0,0 +1,53 @@
@@ -371,7 +370,7 @@ index 00000000000..36fafbc00fd
 +    snprintf(buf, 64, "%p\n", TfLiteHexagonDelegateCreate);
 +}
 diff --git a/tensorflow/lite/c/version_script.lds b/tensorflow/lite/c/version_script.lds
-index 07f5a25a5f7..2ac552326d7 100644
+index 07f5a25a..2ac55232 100644
 --- a/tensorflow/lite/c/version_script.lds
 +++ b/tensorflow/lite/c/version_script.lds
 @@ -2,6 +2,7 @@ VERS_1.0 {
@@ -384,7 +383,7 @@ index 07f5a25a5f7..2ac552326d7 100644
    local:
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/AEEStdDef.h b/tensorflow/lite/delegates/hexagon/hexagon/AEEStdDef.h
 new file mode 100644
-index 00000000000..8a519c4cc8d
+index 00000000..8a519c4c
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/AEEStdDef.h
 @@ -0,0 +1,1150 @@
@@ -1540,7 +1539,7 @@ index 00000000000..8a519c4cc8d
 +#endif /* #ifndef AEESTDDEF_H */
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/AEEStdErr.h b/tensorflow/lite/delegates/hexagon/hexagon/AEEStdErr.h
 new file mode 100644
-index 00000000000..e81c4c41209
+index 00000000..e81c4c41
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/AEEStdErr.h
 @@ -0,0 +1,360 @@
@@ -1906,7 +1905,7 @@ index 00000000000..e81c4c41209
 +#endif /* #ifndef AEESTDERR_H */
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn.h b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn.h
 new file mode 100644
-index 00000000000..e8e1bc01b2e
+index 00000000..e8e1bc01
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn.h
 @@ -0,0 +1,398 @@
@@ -2310,7 +2309,7 @@ index 00000000000..e8e1bc01b2e
 +#endif //_HEXAGON_NN_H
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_interface.c b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_interface.c
 new file mode 100644
-index 00000000000..a7f2a63e41f
+index 00000000..a7f2a63e
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_interface.c
 @@ -0,0 +1,61 @@
@@ -2377,7 +2376,7 @@ index 00000000000..a7f2a63e41f
 +#endif
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_ops.h b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_ops.h
 new file mode 100644
-index 00000000000..996c66bc593
+index 00000000..996c66bc
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_ops.h
 @@ -0,0 +1,51 @@
@@ -2435,7 +2434,7 @@ index 00000000000..996c66bc593
 \ No newline at end of file
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_stub.c b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_stub.c
 new file mode 100644
-index 00000000000..2753b02e2d6
+index 00000000..2753b02e
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_nn_stub.c
 @@ -0,0 +1,2149 @@
@@ -4590,7 +4589,7 @@ index 00000000000..2753b02e2d6
 +#endif //_HEXAGON_NN_STUB_H
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
 new file mode 100644
-index 00000000000..29a16823c86
+index 00000000..29a16823
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/hexagon_rpc.cc
 @@ -0,0 +1,91 @@
@@ -4687,7 +4686,7 @@ index 00000000000..29a16823c86
 +}
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/ops.def b/tensorflow/lite/delegates/hexagon/hexagon/ops.def
 new file mode 100644
-index 00000000000..1c6197caa08
+index 00000000..1c6197ca
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/ops.def
 @@ -0,0 +1,542 @@
@@ -5235,7 +5234,7 @@ index 00000000000..1c6197caa08
 +#endif
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon/remote.h b/tensorflow/lite/delegates/hexagon/hexagon/remote.h
 new file mode 100644
-index 00000000000..8f9b88abf70
+index 00000000..8f9b88ab
 --- /dev/null
 +++ b/tensorflow/lite/delegates/hexagon/hexagon/remote.h
 @@ -0,0 +1,323 @@
@@ -5563,7 +5562,7 @@ index 00000000000..8f9b88abf70
 +
 +#endif // REMOTE_H
 diff --git a/tensorflow/lite/delegates/hexagon/hexagon_delegate.cc b/tensorflow/lite/delegates/hexagon/hexagon_delegate.cc
-index cd34c75c595..ca1b6d892b9 100644
+index cd34c75c..ca1b6d89 100644
 --- a/tensorflow/lite/delegates/hexagon/hexagon_delegate.cc
 +++ b/tensorflow/lite/delegates/hexagon/hexagon_delegate.cc
 @@ -12,6 +12,41 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -5678,7 +5677,7 @@ index cd34c75c595..ca1b6d892b9 100644
 +#endif //TFLITE_ENABLE_HEXAGON
 +}
 diff --git a/tensorflow/lite/examples/label_image/CMakeLists.txt b/tensorflow/lite/examples/label_image/CMakeLists.txt
-index 1bf259aad10..4462f1e82ec 100644
+index 1bf259aa..4462f1e8 100644
 --- a/tensorflow/lite/examples/label_image/CMakeLists.txt
 +++ b/tensorflow/lite/examples/label_image/CMakeLists.txt
 @@ -31,6 +31,7 @@ list(APPEND TFLITE_LABEL_IMAGE_SRCS
@@ -5733,7 +5732,7 @@ index 1bf259aad10..4462f1e82ec 100644
 +  )
 +endif()
 diff --git a/tensorflow/lite/examples/label_image/label_image.cc b/tensorflow/lite/examples/label_image/label_image.cc
-index 42e056796ef..88d6a2d4e7c 100644
+index 42e05679..88d6a2d4 100644
 --- a/tensorflow/lite/examples/label_image/label_image.cc
 +++ b/tensorflow/lite/examples/label_image/label_image.cc
 @@ -12,6 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -5789,7 +5788,7 @@ index 42e056796ef..88d6a2d4e7c 100644
        case 'l':
          s.labels_file_name = optarg;
 diff --git a/tensorflow/lite/experimental/acceleration/configuration/hexagon_plugin.cc b/tensorflow/lite/experimental/acceleration/configuration/hexagon_plugin.cc
-index 44acc2370f2..cf246c1592e 100644
+index 44acc237..cf246c15 100644
 --- a/tensorflow/lite/experimental/acceleration/configuration/hexagon_plugin.cc
 +++ b/tensorflow/lite/experimental/acceleration/configuration/hexagon_plugin.cc
 @@ -18,16 +18,16 @@ limitations under the License.
@@ -5843,7 +5842,7 @@ index 44acc2370f2..cf246c1592e 100644
  #endif
  };
 diff --git a/tensorflow/lite/nnapi/nnapi_implementation.cc b/tensorflow/lite/nnapi/nnapi_implementation.cc
-index 69dfe1f6a9a..851b94f4c9b 100644
+index 69dfe1f6..851b94f4 100644
 --- a/tensorflow/lite/nnapi/nnapi_implementation.cc
 +++ b/tensorflow/lite/nnapi/nnapi_implementation.cc
 @@ -12,6 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -5914,7 +5913,7 @@ index 69dfe1f6a9a..851b94f4c9b 100644
    nnapi.nnapi_exists = libneuralnetworks != nullptr;
  
 diff --git a/tensorflow/lite/tools/benchmark/CMakeLists.txt b/tensorflow/lite/tools/benchmark/CMakeLists.txt
-index 81fbb5d687d..590140d4762 100644
+index 81fbb5d6..590140d4 100644
 --- a/tensorflow/lite/tools/benchmark/CMakeLists.txt
 +++ b/tensorflow/lite/tools/benchmark/CMakeLists.txt
 @@ -35,11 +35,19 @@ list(APPEND TFLITE_BENCHMARK_SRCS
@@ -5972,7 +5971,7 @@ index 81fbb5d687d..590140d4762 100644
    PRIVATE
      ${TFLITE_BENCHMARK_CC_OPTIONS}
 diff --git a/tensorflow/lite/tools/benchmark/benchmark_performance_options.cc b/tensorflow/lite/tools/benchmark/benchmark_performance_options.cc
-index 91d60350c2e..016e1262e68 100644
+index 91d60350..016e1262 100644
 --- a/tensorflow/lite/tools/benchmark/benchmark_performance_options.cc
 +++ b/tensorflow/lite/tools/benchmark/benchmark_performance_options.cc
 @@ -12,6 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -6019,7 +6018,7 @@ index 91d60350c2e..016e1262e68 100644
  #include "tensorflow/lite/tools/benchmark/benchmark_performance_options.h"
  
 diff --git a/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake b/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
-index c7e20f9577d..36ac451350f 100644
+index c7e20f95..36ac4513 100644
 --- a/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/cpuinfo.cmake
 @@ -41,4 +41,5 @@ set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "Disable cpuinfo micro-benchmarks")
@@ -6029,7 +6028,7 @@ index c7e20f9577d..36ac451350f 100644
 +  EXCLUDE_FROM_ALL
  )
 diff --git a/tensorflow/lite/tools/cmake/modules/eigen.cmake b/tensorflow/lite/tools/cmake/modules/eigen.cmake
-index ee0e6376ba2..66dfad20a2e 100644
+index ee0e6376..66dfad20 100644
 --- a/tensorflow/lite/tools/cmake/modules/eigen.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/eigen.cmake
 @@ -99,4 +99,4 @@ set(EIGEN_TEST_SYCL OFF CACHE BOOL "Disable Sycl test")
@@ -6039,7 +6038,7 @@ index ee0e6376ba2..66dfad20a2e 100644
 -add_subdirectory("${eigen_SOURCE_DIR}" "${eigen_BINARY_DIR}")
 +add_subdirectory("${eigen_SOURCE_DIR}" "${eigen_BINARY_DIR}" EXCLUDE_FROM_ALL)
 diff --git a/tensorflow/lite/tools/cmake/modules/farmhash.cmake b/tensorflow/lite/tools/cmake/modules/farmhash.cmake
-index 9c8e039e6fe..7a5160fa7eb 100644
+index 9c8e039e..7a5160fa 100644
 --- a/tensorflow/lite/tools/cmake/modules/farmhash.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/farmhash.cmake
 @@ -44,4 +44,5 @@ set(FARMHASH_SOURCE_DIR "${farmhash_SOURCE_DIR}" CACHE PATH
@@ -6049,7 +6048,7 @@ index 9c8e039e6fe..7a5160fa7eb 100644
 +  EXCLUDE_FROM_ALL
  )
 diff --git a/tensorflow/lite/tools/cmake/modules/fft2d.cmake b/tensorflow/lite/tools/cmake/modules/fft2d.cmake
-index b4169104fae..9d44a2c6865 100644
+index b4169104..9d44a2c6 100644
 --- a/tensorflow/lite/tools/cmake/modules/fft2d.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/fft2d.cmake
 @@ -37,4 +37,5 @@ set(FFT2D_SOURCE_DIR "${fft2d_SOURCE_DIR}" CACHE PATH "fft2d source")
@@ -6059,7 +6058,7 @@ index b4169104fae..9d44a2c6865 100644
 +  EXCLUDE_FROM_ALL
  )
 diff --git a/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake b/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
-index 54b413f69ac..a2b5ca9997c 100644
+index 54b413f6..a2b5ca99 100644
 --- a/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/flatbuffers.cmake
 @@ -41,6 +41,7 @@ add_definitions(-DNOMINMAX=1)
@@ -6080,7 +6079,7 @@ index 54b413f69ac..a2b5ca9997c 100644
    set(FLATC_INSTALL_PREFIX <INSTALL_DIR> CACHE PATH "Flatc installation directory")
  endif()
 diff --git a/tensorflow/lite/tools/cmake/modules/gemmlowp.cmake b/tensorflow/lite/tools/cmake/modules/gemmlowp.cmake
-index 0aaea326a0a..da31e3c3fb8 100644
+index 0aaea326..da31e3c3 100644
 --- a/tensorflow/lite/tools/cmake/modules/gemmlowp.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/gemmlowp.cmake
 @@ -42,4 +42,5 @@ set(GEMMLOWP_SOURCE_DIR "${gemmlowp_SOURCE_DIR}" CACHE PATH "Source directory")
@@ -6090,7 +6089,7 @@ index 0aaea326a0a..da31e3c3fb8 100644
 +  EXCLUDE_FROM_ALL
  )
 diff --git a/tensorflow/lite/tools/cmake/modules/neon2sse.cmake b/tensorflow/lite/tools/cmake/modules/neon2sse.cmake
-index 1cc6af805c3..1aa75efbf7b 100644
+index 1cc6af80..1aa75efb 100644
 --- a/tensorflow/lite/tools/cmake/modules/neon2sse.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/neon2sse.cmake
 @@ -35,4 +35,5 @@ endif()
@@ -6100,7 +6099,7 @@ index 1cc6af805c3..1aa75efbf7b 100644
 +  EXCLUDE_FROM_ALL
  )
 diff --git a/tensorflow/lite/tools/cmake/modules/ruy.cmake b/tensorflow/lite/tools/cmake/modules/ruy.cmake
-index da1ca0f0e49..d9b87b36200 100644
+index da1ca0f0..d9b87b36 100644
 --- a/tensorflow/lite/tools/cmake/modules/ruy.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/ruy.cmake
 @@ -37,4 +37,5 @@ set(RUY_SOURCE_DIR "${ruy_SOURCE_DIR}" CACHE PATH "RUY source directory")
@@ -6110,7 +6109,7 @@ index da1ca0f0e49..d9b87b36200 100644
 +  EXCLUDE_FROM_ALL
  )
 diff --git a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
-index 24f0674cf92..b55d3dfa7aa 100644
+index 24f0674c..b55d3dfa 100644
 --- a/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
 +++ b/tensorflow/lite/tools/cmake/modules/xnnpack.cmake
 @@ -43,6 +43,7 @@ set(XNNPACK_BUILD_BENCHMARKS OFF CACHE BOOL "Disable XNNPACK benchmarks.")
@@ -6122,7 +6121,7 @@ index 24f0674cf92..b55d3dfa7aa 100644
  
  include_directories(
 diff --git a/tensorflow/lite/tools/evaluation/utils.cc b/tensorflow/lite/tools/evaluation/utils.cc
-index ebded4dfca6..119175df6d9 100644
+index ebded4df..119175df 100644
 --- a/tensorflow/lite/tools/evaluation/utils.cc
 +++ b/tensorflow/lite/tools/evaluation/utils.cc
 @@ -12,6 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -6205,7 +6204,7 @@ index ebded4dfca6..119175df6d9 100644
      const TfLiteHexagonDelegateOptions* options,
      const std::string& library_directory_path) {
 diff --git a/tensorflow/lite/tools/evaluation/utils.h b/tensorflow/lite/tools/evaluation/utils.h
-index 43b3fa217b1..57cbe483a36 100644
+index 43b3fa21..57cbe483 100644
 --- a/tensorflow/lite/tools/evaluation/utils.h
 +++ b/tensorflow/lite/tools/evaluation/utils.h
 @@ -12,6 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -6279,5 +6278,5 @@ index 43b3fa217b1..57cbe483a36 100644
      const TfLiteHexagonDelegateOptions* options,
      const std::string& library_directory_path);
 -- 
-2.17.1
+2.34.1
 
