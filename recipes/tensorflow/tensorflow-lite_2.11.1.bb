@@ -26,6 +26,7 @@ SRC_URI = "\
     file://0006-tensorflow-lite-Integrate-TFLite-Accuracy-Tools.patch \
     file://0007-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
     file://0008-tensorflow-lite-Remove-eigen-bench-dir-after-fetchin.patch \
+    file://0009-tensorflow-lite-Rename-of-cl_ndrange_kernel_command_.patch \
     file://tensorflow-lite.pc.in \
     "
 
