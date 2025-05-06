@@ -18,10 +18,13 @@ SRC_URI = "\
          git://git.codelinaro.org/clo/le/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH};destsuffix=src \
          file://tensorflow-lite.pc.in \
          "
+SRC_URI:append:sdmsteppe = " file://0001-remove-abseil-cpp-build.patch"
 
 S = "${WORKDIR}/src"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
+
+DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
 
 do_configure[network] = "1"
 
@@ -74,8 +77,8 @@ python () {
         d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
 }
 
-FILES_${PN} = "${libdir}/lib*.so ${bindir}/*"
-FILES_${PN}-dev += "${includedir}"
+FILES:${PN} = "${libdir}/lib*.so ${bindir}/*"
+FILES:${PN}-dev += "${includedir}"
 
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
@@ -104,12 +107,6 @@ do_install:append() {
     cp -r ${S}/third_party/eigen3/unsupported/Eigen/* ${D}${includedir}/third_party/eigen3/unsupported/Eigen/
 
     cp -r ${B}/eigen/unsupported ${D}${includedir}/
-
-    install -d ${D}${includedir}/absl
-
-    cd ${B}/abseil-cpp/absl
-    cp --parents $(find . -name "*.h*") ${D}${includedir}/absl/
-    install -m 0644 numeric/int128_have_intrinsic.inc ${D}${includedir}/absl/numeric/
 
     install -d ${D}${includedir}/gemmlowp
 

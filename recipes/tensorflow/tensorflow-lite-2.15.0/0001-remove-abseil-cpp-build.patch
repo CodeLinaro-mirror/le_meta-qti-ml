@@ -1,0 +1,303 @@
+####################################################################################################
+This patch file is from Qualcomm Technologies, Inc. and is provided under the following license:
+
+Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+SPDX-License-Identifier: BSD-3-Clause-Clear
+####################################################################################################
+From 367e555b864966984213029091f996d26be9300d Mon Sep 17 00:00:00 2001
+From: Sanjay Chitroda <ckantibh@qti.qualcomm.com>
+Date: Fri, 18 Apr 2025 18:21:31 +0530
+Subject: [PATCH] remove abseil-cpp build
+
+Upstream-Status: Inappropriate [Qualcomm specific]
+
+Signed-off-by: Sanjay Chitroda <ckantibh@qti.qualcomm.com>
+---
+ tensorflow/lite/CMakeLists.txt                |   3 -
+ .../lite/tools/cmake/modules/Findabsl.cmake   | 187 ------------------
+ .../lite/tools/cmake/modules/abseil-cpp.cmake |  51 -----
+ 3 files changed, 241 deletions(-)
+ delete mode 100644 tensorflow/lite/tools/cmake/modules/Findabsl.cmake
+ delete mode 100644 tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake
+
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+index 3caac15f79d..a0f7cb57380 100644
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -399,7 +399,6 @@ if(TFLITE_ENABLE_GPU)
+       ${TFLITE_DELEGATES_METAL_SRCS}
+     )
+     target_include_directories(metal_delegate PUBLIC
+-      ${CMAKE_BINARY_DIR}/abseil-cpp
+       ${CMAKE_BINARY_DIR}/flatbuffers/include
+       PRIVATE ${TENSORFLOW_SOURCE_DIR}
+     )
+@@ -440,7 +439,6 @@ if(TFLITE_ENABLE_GPU)
+      set_source_files_properties(${METAL_DELEGATE_PATH}${lib_name}.cc  PROPERTIES LANGUAGE OBJCXX)
+      add_library("${lib_name}" STATIC ${METAL_DELEGATE_PATH}${lib_name}.cc)
+      target_include_directories("${lib_name}" PUBLIC
+-       ${CMAKE_BINARY_DIR}/abseil-cpp
+        ${CMAKE_BINARY_DIR}/flatbuffers/include
+      )
+      set_target_properties(${lib_name} PROPERTIES LINKER_LANGUAGE OBJCXX)
+@@ -454,7 +452,6 @@ if(TFLITE_ENABLE_GPU)
+    foreach(lib_name ${MM_SRCS})
+      add_library("${lib_name}" STATIC ${METAL_DELEGATE_PATH}${lib_name}.mm)
+      target_include_directories("${lib_name}" PUBLIC
+-       ${CMAKE_BINARY_DIR}/abseil-cpp
+        ${CMAKE_BINARY_DIR}/flatbuffers/include
+      )
+      target_link_libraries(${lib_name})
+diff --git a/tensorflow/lite/tools/cmake/modules/Findabsl.cmake b/tensorflow/lite/tools/cmake/modules/Findabsl.cmake
+deleted file mode 100644
+index 75041749bd1..00000000000
+--- a/tensorflow/lite/tools/cmake/modules/Findabsl.cmake
++++ /dev/null
+@@ -1,187 +0,0 @@
+-#
+-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#      https://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-# grpc uses find_package in CONFIG mode for this package, so override the
+-# system installation and build from source instead.
+-include(abseil-cpp)
+-if(abseil-cpp_POPULATED)
+-  set(_ABSL_LIBRARY_NAMES
+-    algorithm
+-    algorithm_container
+-    any
+-    atomic_hook
+-    atomic_hook_test_helper
+-    awesome
+-    bad_any_cast
+-    bad_any_cast_impl
+-    bad_optional_access
+-    bad_variant_access
+-    base
+-    base_internal
+-    bind_front
+-    bits
+-    btree
+-    btree_test_common
+-    city
+-    civil_time
+-    compare
+-    compressed_tuple
+-    config
+-    conformance_testing
+-    container
+-    container_common
+-    container_memory
+-    cord
+-    cord_test_helpers
+-    core_headers
+-    counting_allocator
+-    debugging
+-    debugging_internal
+-    demangle_internal
+-    dynamic_annotations
+-    endian
+-    errno_saver
+-    examine_stack
+-    exception_safety_testing
+-    exception_testing
+-    exponential_biased
+-    failure_signal_handler
+-    fantastic_lib
+-    fast_type_id
+-    fixed_array
+-    flags
+-    flags_commandlineflag
+-    flags_commandlineflag_internal
+-    flags_config
+-    flags_internal
+-    flags_marshalling
+-    flags_parse
+-    flags_path_util
+-    flags_private_handle_accessor
+-    flags_program_name
+-    flags_reflection
+-    flags_usage
+-    flags_usage_internal
+-    flat_hash_map
+-    flat_hash_set
+-    function_ref
+-    graphcycles_internal
+-    hash
+-    hash_function_defaults
+-    hash_generator_testing
+-    hash_policy_testing
+-    hash_policy_traits
+-    hash_testing
+-    hashtable_debug
+-    hashtable_debug_hooks
+-    hashtablez_sampler
+-    have_sse
+-    hdrs
+-    inlined_vector
+-    inlined_vector_internal
+-    int128
+-    kernel_timeout_internal
+-    layout
+-    leak_check
+-    leak_check_api_disabled_for_testing
+-    leak_check_api_enabled_for_testing
+-    leak_check_disable
+-    log_severity
+-    main_lib
+-    malloc_internal
+-    memory
+-    meta
+-    node_hash_map
+-    node_hash_policy
+-    node_hash_set
+-    numeric
+-    optional
+-    per_thread_sem_test_common
+-    periodic_sampler
+-    pow10_helper
+-    pretty_function
+-    random_bit_gen_ref
+-    random_distributions
+-    random_internal_distribution_caller
+-    random_internal_distribution_test_util
+-    random_internal_explicit_seed_seq
+-    random_internal_fast_uniform_bits
+-    random_internal_fastmath
+-    random_internal_generate_real
+-    random_internal_iostream_state_saver
+-    random_internal_mock_helpers
+-    random_internal_mock_overload_set
+-    random_internal_nonsecure_base
+-    random_internal_pcg_engine
+-    random_internal_platform
+-    random_internal_pool_urbg
+-    random_internal_randen
+-    random_internal_randen_engine
+-    random_internal_randen_hwaes
+-    random_internal_randen_hwaes_impl
+-    random_internal_randen_slow
+-    random_internal_salted_seed_seq
+-    random_internal_seed_material
+-    random_internal_sequence_urbg
+-    random_internal_traits
+-    random_internal_uniform_helper
+-    random_internal_wide_multiply
+-    random_mocking_bit_gen
+-    random_random
+-    random_seed_gen_exception
+-    random_seed_sequences
+-    raw_hash_map
+-    raw_hash_set
+-    raw_logging_internal
+-    scoped_set_env
+-    span
+-    spinlock_test_common
+-    spinlock_wait
+-    spy_hash_state
+-    stack_consumption
+-    stacktrace
+-    status
+-    str_format
+-    str_format_internal
+-    strerror
+-    strings
+-    strings_internal
+-    symbolize
+-    synchronization
+-    test_instance_tracker
+-    thread_pool
+-    throw_delegate
+-    time
+-    time_internal_test_util
+-    time_zone
+-    tracked
+-    type_traits
+-    unordered_map_constructor_test
+-    unordered_map_lookup_test
+-    unordered_map_members_test
+-    unordered_map_modifiers_test
+-    unordered_set_constructor_test
+-    unordered_set_lookup_test
+-    unordered_set_members_test
+-    unordered_set_modifiers_test
+-    utility
+-    variant
+-  )
+-  set(_ABSL_LIBRARIES ${_ABSL_LIBRARY_NAMES})
+-  foreach(_LIBRARY ${_ABSL_LIBRARY_NAMES})
+-    list(APPEND _ABSL_LIBRARIES "absl::${LIBRARY}")
+-  endforeach()
+-  set(ABSL_LIBRARIES ${ABSL_LIBRARIES} CACHE STRING "absl libs")
+-endif()
+diff --git a/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake b/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake
+deleted file mode 100644
+index 51a0e7f4758..00000000000
+--- a/tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake
++++ /dev/null
+@@ -1,51 +0,0 @@
+-#
+-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#      https://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-# Use absl_base as a proxy for the project being included.
+-if(TARGET absl_base OR abseil-cpp_POPULATED)
+-  return()
+-endif()
+-
+-include(OverridableFetchContent)
+-
+-if(${CMAKE_VERSION} VERSION_LESS "3.17.0")
+-  set(ABSEIL_PATCH_COMMAND "apply")
+-else()
+-  set(ABSEIL_PATCH_COMMAND "am")
+-endif()
+-
+-OverridableFetchContent_Declare(
+-  abseil-cpp
+-  GIT_REPOSITORY https://github.com/abseil/abseil-cpp
+-  # Sync with tensorflow/third_party/absl/workspace.bzl
+-  GIT_TAG b971ac5250ea8de900eae9f95e06548d14cd95fe
+-  GIT_SHALLOW TRUE
+-  GIT_PROGRESS TRUE
+-  PATCH_COMMAND git ${ABSEIL_PATCH_COMMAND} ${TFLITE_SOURCE_DIR}/patches/abseil-cpp/0001-Revert-Release-the-CRC-library.patch && git ${ABSEIL_PATCH_COMMAND} ${TFLITE_SOURCE_DIR}/patches/abseil-cpp/0002-Revert-Allow-Cord-to-store-chunked-checksums.patch
+-  PREFIX "${CMAKE_BINARY_DIR}"
+-  SOURCE_DIR "${CMAKE_BINARY_DIR}/abseil-cpp"
+-)
+-OverridableFetchContent_GetProperties(abseil-cpp)
+-if(NOT abseil-cpp_POPULATED)
+-  OverridableFetchContent_Populate(abseil-cpp)
+-endif()
+-
+-set(ABSL_USE_GOOGLETEST_HEAD OFF CACHE BOOL "Disable googletest")
+-set(ABSL_RUN_TESTS OFF CACHE BOOL "Disable build of ABSL tests")
+-add_subdirectory(
+-  "${abseil-cpp_SOURCE_DIR}"
+-  "${abseil-cpp_BINARY_DIR}"
+-)
+-
+-- 
+2.34.1
+
