@@ -82,8 +82,8 @@ EXTRA_OECMAKE += "\
 PACKAGECONFIG[qti-dsp] = " -DTFLITE_ENABLE_HEXAGON=true ,,,"
 PACKAGECONFIG[qti-gpu] = " -DTFLITE_ENABLE_GPU=true ,,,"
 
-FILES_${PN} = "${libdir}/lib*.so ${bindir}/*"
-FILES_${PN}-dev += "${includedir}"
+FILES:${PN} = "${libdir}/lib*.so ${bindir}/*"
+FILES:${PN}-dev += "${includedir}"
 
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
