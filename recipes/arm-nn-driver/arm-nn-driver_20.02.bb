@@ -55,17 +55,17 @@ python do_patch() {
 
 PACKAGES = "${PN} ${PN}-dbg ${PN}-dev"
 
-FILES_${PN}-libarmnn-driver-dbg    = "${libdir}/nn/.debug/libarmnn-driver-1.2.*"
-FILES_${PN}-libarmnn-driver        = "${libdir}/nn/libarmnn-driver-1.2.so"
-FILES_${PN}-libarmnn-driver-dev    = "${libdir}/nn/libarmnn-driver-1.2.so ${includedir}"
+FILES:${PN}-libarmnn-driver-dbg    = "${libdir}/nn/.debug/libarmnn-driver-1.2.*"
+FILES:${PN}-libarmnn-driver        = "${libdir}/nn/libarmnn-driver-1.2.so"
+FILES:${PN}-libarmnn-driver-dev    = "${libdir}/nn/libarmnn-driver-1.2.so ${includedir}"
 
-FILES_${PN} = "${libdir}/lib*.so*"
-FILES_${PN} += "${libdir}/nn/lib*.so"
+FILES:${PN} = "${libdir}/lib*.so*"
+FILES:${PN} += "${libdir}/nn/lib*.so"
 
-FILES_${PN}-dev = "${libdir}/lib*.so ${includedir}"
-FILES_${PN}-dev += "${libdir}/nn/lib*.so"
+FILES:${PN}-dev = "${libdir}/lib*.so ${includedir}"
+FILES:${PN}-dev += "${libdir}/nn/lib*.so"
 
-FILES_${PN}-dbg = "${libdir}/.debug"
-FILES_${PN}-dbg += "${libdir}/nn/.debug"
+FILES:${PN}-dbg = "${libdir}/.debug"
+FILES:${PN}-dbg += "${libdir}/nn/.debug"
 
 do_package_qa[noexec] = "1"
