@@ -67,10 +67,9 @@ PACKAGECONFIG[gpu] = " -DTFLITE_ENABLE_GPU=ON ,  -DTFLITE_ENABLE_GPU=OFF, adreno
 EXTRA_OECMAKE:remove:qcs610-odk-64 = " -DTFLITE_ENABLE_GPU=ON"
 EXTRA_OECMAKE:append:qcs610-odk-64 = "-DTFLITE_ENABLE_GPU=OFF"
 
-CC_COMPILER = "${@d.getVar('CC').split(' ')[0].split('/')[-1]}"
-LLVM_COMPILER = "${@d.getVar('LLVM_VERSION').split('.')[0]}"
+COMPILER = "${@d.getVar('CC').split(' ')[0].split('/')[-1]}"
 python () {
-    if d.getVar('CC_COMPILER') == "clang" and int(d.getVar('LLVM_COMPILER')) <= 10:
+    if d.getVar('COMPILER') == "clang":
         d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
 }
 
