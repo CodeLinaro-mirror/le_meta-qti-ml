@@ -1,69 +1,47 @@
-inherit cmake sdllvm
+inherit cmake
 
 SUMMARY = "Tensorflow Lite"
 DESCRIPTION = "TensorFlow Lite C++ Library"
 
 LICENSE = "Apache-2.0"
-LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/\
-${LICENSE};md5=89aea4e17d99a7cacdbeed46a0096b10"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/${LICENSE};md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 DEPENDS = "\
-    unzip-native \
-    curl-native \
-    zlib \
     protobuf \
     protobuf-native \
     jpeg \
-    ${@bb.utils.contains('COMBINED_FEATURES', 'qti-cdsp', 'adsprpc', '', d)} \
-    ${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'adreno200', '', d)} \
-    flatbuffers \
-    flatbuffers-native \
-    nsync \
-    vulkan-headers \
-    libhexagon-nn \
     "
-
-PACKAGECONFIG ??= " \
-    ${@bb.utils.contains('COMBINED_FEATURES', 'qti-cdsp', 'qti-dsp', '', d)} \
-    ${@bb.utils.contains('COMBINED_FEATURES', 'opencl', 'qti-gpu', '', d)} \
-    "
-
 SRCREV = "${AUTOREV}"
-BRANCH = "github.com/r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
+BRANCH = "iot-ml.lnx.${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
-    ${CLO_LE_GIT}/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH} \
-    file://0001-tensorflow-lite-Bring-up-TFLite-on-LE-platforms.patch \
-    file://0002-tensorflow-lite-Integrate-Multi-Model-Label-Image-Ap.patch \
-    file://0003-tensorflow-lite-Integrate-TFLite-Accuracy-Tools.patch \
-    file://0004-tensorflow-lite-Enable-AveragePool2D-nnapi-delegatio.patch \
-    file://0005-tensorflow-lite-Enable-align-corners-in-Bilinear-res.patch \
-    file://0006-tensorflow-lite-Add-support-for-LeakyReLU-in-Hexagon.patch \
-    file://0008-tensorflow-lite-Fix-missing-symbols-needed-by-gst-pl.patch \
-    file://0009-Tensorflow-lite-Updated-github-to-CLO-links-for-depe.patch \
-    file://tensorflow-lite.pc.in \
-    "
+         git://git.codelinaro.org/clo/le/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH};destsuffix=src \
+         file://tensorflow-lite.pc.in \
+         "
+SRC_URI:append:sdmsteppe = " file://0001-remove-abseil-cpp-build.patch"
+SRC_URI:append:sun= "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
 
-S = "${WORKDIR}/git"
+S = "${WORKDIR}/src"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
 
-do_cherry_pick() {
-    cd ${OECMAKE_SOURCEPATH}
-    git cherry-pick 5d189740ed607fbaf5b3f61009887b5ea9b89ca5
-}
+DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
 
-addtask do_cherry_pick after do_unpack before do_patch
+do_configure[network] = "1"
 
 do_configure:prepend() {
     mkdir -p ${WORKDIR}/build
     cd ${WORKDIR}/build
-    cmake ../git/tensorflow/lite/
+    cmake ../src/tensorflow/lite/c
     find ${WORKDIR}/build -name Makefile -exec rm -r {} \;
     find ${WORKDIR}/build -name cmake_install.cmake -exec rm -r {} \;
     find ${WORKDIR}/build -name CMakeCache.txt -exec rm -r {} \;
     find ${WORKDIR}/build -name CMakeFiles -exec rm -rf {} +
 }
+
 
 OECMAKE_TARGET_COMPILE += "\
     benchmark_model \
@@ -82,10 +60,26 @@ EXTRA_OECMAKE += "\
     -DTFLITE_INSTALL_INCDIR=${includedir} \
     -DTFLITE_INSTALL_BINDIR=${bindir} \
     -DTFLITE_INSTALL_LIBDIR=${libdir} \
+    -DTFLITE_ENABLE_XNNPACK=ON \
     -DTFLITE_ENABLE_EVALUATION_TOOLS=ON \
+    -DTFLITE_ENABLE_NNAPI=OFF \
+    -DTFLITE_ENABLE_RUY=ON \
+    -DTFLITE_ENABLE_HEXAGON=OFF \
     "
-PACKAGECONFIG[qti-dsp] = " -DTFLITE_ENABLE_HEXAGON=true ,,,"
-PACKAGECONFIG[qti-gpu] = " -DTFLITE_ENABLE_GPU=true ,,,"
+
+PACKAGECONFIG ?= "gpu"
+
+PACKAGECONFIG[gpu] = " -DTFLITE_ENABLE_GPU=ON ,  -DTFLITE_ENABLE_GPU=OFF, adreno vulkan-headers, adreno"
+
+EXTRA_OECMAKE:remove:qcs610-odk-64 = " -DTFLITE_ENABLE_GPU=ON"
+EXTRA_OECMAKE:append:qcs610-odk-64 = "-DTFLITE_ENABLE_GPU=OFF"
+
+CC_COMPILER = "${@d.getVar('CC').split(' ')[0].split('/')[-1]}"
+LLVM_COMPILER = "${@d.getVar('LLVM_VERSION').split('.')[0]}"
+python () {
+    if d.getVar('CC_COMPILER') == "clang" and int(d.getVar('LLVM_COMPILER')) <= 10:
+        d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
+}
 
 FILES:${PN} = "${libdir}/lib*.so ${bindir}/*"
 FILES:${PN}-dev += "${includedir}"
@@ -93,21 +87,15 @@ FILES:${PN}-dev += "${includedir}"
 SOLIBS = ".so*"
 FILES_SOLIBSDEV = ""
 
+TFLITE_HEADERS="tensorflow/lite tensorflow/core/public tensorflow/core/platform tensorflow/core/lib tensorflow/lite/examples/label_image"
+
 do_install:append() {
 
-    local TFLITE_HEADERS=(\
-    "tensorflow/lite" \
-    "tensorflow/core/public" \
-    "tensorflow/core/platform" \
-    "tensorflow/core/lib" \
-    "tensorflow/lite/examples/label_image" \
-    )
-
-    for HPATH in ${TFLITE_HEADERS[@]};
+    for HPATH in ${TFLITE_HEADERS};
     do
-        install -d ${D}${includedir}/$HPATH
-        cd ${S}/$HPATH
-        cp --parents $(find . -name "*.h*") ${D}${includedir}/$HPATH
+        install -d ${D}${includedir}/${HPATH}
+        cd ${S}/${HPATH}
+        cp --parents $(find . \( ! -name "*hexagon*" -name "*.h*" \)) ${D}${includedir}/${HPATH}
     done
 
     install -d ${D}${libdir}
@@ -124,12 +112,6 @@ do_install:append() {
 
     cp -r ${B}/eigen/unsupported ${D}${includedir}/
 
-    install -d ${D}${includedir}/absl
-
-    cd ${B}/abseil-cpp/absl
-    cp --parents $(find . -name "*.h*") ${D}${includedir}/absl/
-    install -m 0644 numeric/int128_have_intrinsic.inc ${D}${includedir}/absl/numeric/
-
     install -d ${D}${includedir}/gemmlowp
 
     cd ${B}/gemmlowp
@@ -139,6 +121,11 @@ do_install:append() {
 
     cd ${B}/ruy/ruy
     cp --parents $(find . -name "*.h*") ${D}${includedir}/ruy/
+
+    install -d ${D}${includedir}/flatbuffers
+
+    cd ${B}/flatbuffers/include
+    cp  --parents $(find . -name "*.h*") ${D}${includedir}/
 
     install -d ${D}${libdir}/pkgconfig
     install -m 0644 ${WORKDIR}/tensorflow-lite.pc.in ${D}${libdir}/pkgconfig/tensorflow-lite.pc
