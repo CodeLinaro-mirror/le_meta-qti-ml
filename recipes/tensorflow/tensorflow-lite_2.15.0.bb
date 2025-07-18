@@ -23,6 +23,10 @@ SRC_URI:append:sun= "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
 "
+SRC_URI:append:kera= "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
 
 S = "${WORKDIR}/src"
 
