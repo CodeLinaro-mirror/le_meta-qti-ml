@@ -17,7 +17,6 @@ BRANCH = "iot-ml.lnx.${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 SRC_URI = "\
          git://git.codelinaro.org/clo/le/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH};destsuffix=src \
          file://tensorflow-lite.pc.in \
-         file://0001-remove-abseil-cpp-build.patch \
          "
 SRC_URI:append:sdmsteppe = " file://0001-remove-abseil-cpp-build.patch"
 SRC_URI:append:sun= "\
