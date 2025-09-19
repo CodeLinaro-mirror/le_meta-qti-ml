@@ -17,13 +17,11 @@ BRANCH = "iot-ml.lnx.${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 SRC_URI = "\
          git://git.codelinaro.org/clo/le/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH};destsuffix=src \
          file://tensorflow-lite.pc.in \
-         "
-SRC_URI:append:sdmsteppe = " file://0001-remove-abseil-cpp-build.patch"
-SRC_URI:append:sun= "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
-"
-SRC_URI:append:kera= "\
+         "
+
+SRC_URI:remove:qrbx210-rbx = "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
 "
@@ -74,9 +72,6 @@ EXTRA_OECMAKE += "\
 PACKAGECONFIG ?= "gpu"
 
 PACKAGECONFIG[gpu] = " -DTFLITE_ENABLE_GPU=ON ,  -DTFLITE_ENABLE_GPU=OFF, adreno vulkan-headers, adreno"
-
-EXTRA_OECMAKE:remove:qcs610-odk-64 = " -DTFLITE_ENABLE_GPU=ON"
-EXTRA_OECMAKE:append:qcs610-odk-64 = "-DTFLITE_ENABLE_GPU=OFF"
 
 CC_COMPILER = "${@d.getVar('CC').split(' ')[0].split('/')[-1]}"
 LLVM_COMPILER = "${@d.getVar('LLVM_VERSION').split('.')[0]}"
