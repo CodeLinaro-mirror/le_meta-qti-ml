@@ -21,7 +21,7 @@ DEPENDS += "boost"
 
 do_patch[depends] = "curl-native:do_populate_sysroot python-scons-native:do_populate_sysroot"
 
-SRC_URI = "git://github.com/ARM-software/android-nn-driver.git;branch=branches/android-nn-driver_20_02;rev=v20.02"
+SRC_URI = "git://github.com/ARM-software/android-nn-driver.git;branch=branches/android-nn-driver_20_02;protocol=https;rev=v20.02"
 SRC_URI += "file://0001-android-nn-driver-Port-to-LE.patch"
 SRC_URI += "file://0002-android-nn-driver-lower-the-priority-for-ARM-NN-HAL.patch"
 
