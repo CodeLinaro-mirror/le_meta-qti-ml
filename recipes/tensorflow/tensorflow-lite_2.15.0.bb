@@ -100,7 +100,7 @@ python () {
         d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
 }
 
-FILES:${PN} = "${libdir}/lib*.so ${bindir}/*"
+FILES:${PN} = "${libdir}/lib*.so* ${bindir}/*"
 FILES:${PN}-dev += "${includedir}"
 
 SOLIBS = ".so*"
