@@ -26,6 +26,26 @@ SRC_URI:remove:qrbx210-rbx = "\
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
 "
 
+SRC_URI:remove:qrb5165-rb5 = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+SRC_URI:remove:kalama = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+SRC_URI:remove:bengal = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+SRC_URI:remove:pineapple = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
 S = "${WORKDIR}/src"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
