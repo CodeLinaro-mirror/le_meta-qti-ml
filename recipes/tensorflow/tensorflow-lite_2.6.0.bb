@@ -49,6 +49,7 @@ SRC_URI = "\
 
 S = "${WORKDIR}/git"
 
+do_configure[network] = "1"
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite"
 do_configure:prepend() {
     mkdir -p ${WORKDIR}/build
