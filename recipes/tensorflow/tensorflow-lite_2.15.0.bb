@@ -17,13 +17,31 @@ BRANCH = "iot-ml.lnx.${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 SRC_URI = "\
          git://git.codelinaro.org/clo/le/external/github.com/tensorflow/tensorflow.git;protocol=https;branch=${BRANCH};destsuffix=src \
          file://tensorflow-lite.pc.in \
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
          "
-SRC_URI:append:sdmsteppe = " file://0001-remove-abseil-cpp-build.patch"
-SRC_URI:append:sun= "\
+
+SRC_URI:remove:qrbx210-rbx = "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
 "
-SRC_URI:append:kera= "\
+
+SRC_URI:remove:qrb5165-rb5 = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+SRC_URI:remove:kalama = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+SRC_URI:remove:bengal = "\
+         file://0001-remove-abseil-cpp-build.patch \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+SRC_URI:remove:pineapple = "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
 "
@@ -35,6 +53,8 @@ OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
 DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
 
 do_configure[network] = "1"
+
+MAJOR = "${@d.getVar('PV').split('.')[0]}"
 
 do_configure:prepend() {
     mkdir -p ${WORKDIR}/build
@@ -75,9 +95,6 @@ PACKAGECONFIG ?= "gpu"
 
 PACKAGECONFIG[gpu] = " -DTFLITE_ENABLE_GPU=ON ,  -DTFLITE_ENABLE_GPU=OFF, adreno vulkan-headers, adreno"
 
-EXTRA_OECMAKE:remove:qcs610-odk-64 = " -DTFLITE_ENABLE_GPU=ON"
-EXTRA_OECMAKE:append:qcs610-odk-64 = "-DTFLITE_ENABLE_GPU=OFF"
-
 CC_COMPILER = "${@d.getVar('CC').split(' ')[0].split('/')[-1]}"
 LLVM_COMPILER = "${@d.getVar('LLVM_VERSION').split('.')[0]}"
 python () {
@@ -85,7 +102,8 @@ python () {
         d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
 }
 
-FILES:${PN} = "${libdir}/lib*.so ${bindir}/*"
+INSANE_SKIP:${PN} += "dev-so"
+FILES:${PN} = "${libdir}/lib*.so* ${bindir}/*"
 FILES:${PN}-dev += "${includedir}"
 
 SOLIBS = ".so*"
@@ -103,7 +121,9 @@ do_install:append() {
     done
 
     install -d ${D}${libdir}
-    install ${B}/libtensorflow*.so ${D}${libdir}/
+    install ${B}/libtensorflowlite_c.so ${D}${libdir}/libtensorflowlite_c.so.${PV}
+    ln -sf libtensorflowlite_c.so.${PV} ${D}${libdir}/libtensorflowlite_c.so.${MAJOR}
+    ln -sf libtensorflowlite_c.so.${MAJOR} ${D}${libdir}/libtensorflowlite_c.so
 
     install -d ${D}${includedir}/third_party/eigen3/Eigen
     install -m 0555 ${S}/third_party/eigen3/Eigen/* ${D}${includedir}/third_party/eigen3/Eigen/
