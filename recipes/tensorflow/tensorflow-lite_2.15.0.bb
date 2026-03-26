@@ -54,6 +54,8 @@ DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
 
 do_configure[network] = "1"
 
+MAJOR = "${@d.getVar('PV').split('.')[0]}"
+
 do_configure:prepend() {
     mkdir -p ${WORKDIR}/build
     cd ${WORKDIR}/build
@@ -100,7 +102,8 @@ python () {
         d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
 }
 
-FILES:${PN} = "${libdir}/lib*.so ${bindir}/*"
+INSANE_SKIP:${PN} += "dev-so"
+FILES:${PN} = "${libdir}/lib*.so* ${bindir}/*"
 FILES:${PN}-dev += "${includedir}"
 
 SOLIBS = ".so*"
@@ -118,7 +121,9 @@ do_install:append() {
     done
 
     install -d ${D}${libdir}
-    install ${B}/libtensorflow*.so ${D}${libdir}/
+    install ${B}/libtensorflowlite_c.so ${D}${libdir}/libtensorflowlite_c.so.${PV}
+    ln -sf libtensorflowlite_c.so.${PV} ${D}${libdir}/libtensorflowlite_c.so.${MAJOR}
+    ln -sf libtensorflowlite_c.so.${MAJOR} ${D}${libdir}/libtensorflowlite_c.so
 
     install -d ${D}${includedir}/third_party/eigen3/Eigen
     install -m 0555 ${S}/third_party/eigen3/Eigen/* ${D}${includedir}/third_party/eigen3/Eigen/
