@@ -122,8 +122,8 @@ do_install:append() {
 
     install -d ${D}${libdir}
     install ${B}/libtensorflowlite_c.so ${D}${libdir}/libtensorflowlite_c.so.${PV}
-    ln -sf libtensorflowlite_c.so.${PV} libtensorflowlite_c.so.${MAJOR}
-    ln -sf libtensorflowlite_c.so.${MAJOR} libtensorflowlite_c.so
+    ln -sf libtensorflowlite_c.so.${PV} ${D}${libdir}/libtensorflowlite_c.so.${MAJOR}
+    ln -sf libtensorflowlite_c.so.${MAJOR} ${D}${libdir}/libtensorflowlite_c.so
 
     install -d ${D}${includedir}/third_party/eigen3/Eigen
     install -m 0555 ${S}/third_party/eigen3/Eigen/* ${D}${includedir}/third_party/eigen3/Eigen/
