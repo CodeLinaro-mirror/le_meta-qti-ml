@@ -21,11 +21,6 @@ SRC_URI = "\
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
          "
 
-SRC_URI:remove:qrbx210-rbx = "\
-         file://0001-remove-abseil-cpp-build.patch \
-         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
-"
-
 SRC_URI:remove:qrb5165-rb5 = "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
@@ -44,6 +39,14 @@ SRC_URI:remove:bengal = "\
 SRC_URI:remove:pineapple = "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
+"
+
+# Re-add patchs for qrbx210.since it is removed by SRC_URI:remove:bengal,
+# as bengal is included in qrbx210 MACHINEOVERRIDES.
+# This ensures the patchs are applied correctly for qrbx210 target.
+SRC_URI:append:qrbx210-rbx = "\
+         file://0001-remove-abseil-cpp-build.patch;apply=yes \
+         file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch;apply=yes \
 "
 
 S = "${WORKDIR}/src"
