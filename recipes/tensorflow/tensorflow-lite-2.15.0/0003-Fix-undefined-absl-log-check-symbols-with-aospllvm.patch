@@ -1,0 +1,46 @@
+####################################################################################################
+This patch file is from Qualcomm Technologies, Inc. and is provided under the following license:
+
+Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+SPDX-License-Identifier: BSD-3-Clause-Clear
+####################################################################################################
+From 9b238799dfea89dd12cfdb769a288dcfad93045a Mon Sep 17 00:00:00 2001
+From: Bing Li <bli8@qti.qualcomm.com>
+Date: Thu, 9 Jul 2026 13:02:46 +0800
+Subject: [PATCH] tensorflow-lite: Link tf_logging with absl log and check ops
+
+TensorFlow Lite evaluation tools fail to link with undefined Abseil
+log/check symbols when the toolchain is switched to aospllvm (the
+default config in bsp).
+
+Link tf_logging with absl::log_internal_check_op and
+absl::log_internal_message when those targets are available.
+
+Upstream-Status: Inappropriate [Qualcomm specific]
+
+Signed-off-by: Bing Li <bli8@qti.qualcomm.com>
+---
+ tensorflow/tsl/platform/CMakeLists.txt | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/tensorflow/tsl/platform/CMakeLists.txt b/tensorflow/tsl/platform/CMakeLists.txt
+index 4b79aee7301..99760ed7bef 100644
+--- a/tensorflow/tsl/platform/CMakeLists.txt
++++ b/tensorflow/tsl/platform/CMakeLists.txt
+@@ -47,6 +47,13 @@ target_link_libraries(${TF_LOGGING_TARGET_NAME}
+   ${ENV_TIME_TARGET_NAME}
+ )
+
++if(TARGET absl::log_internal_check_op AND TARGET absl::log_internal_message)
++  target_link_libraries(${TF_LOGGING_TARGET_NAME}
++    absl::log_internal_check_op
++    absl::log_internal_message
++  )
++endif()
++
+ install(TARGETS ${TF_LOGGING_TARGET_NAME}
+   LIBRARY
+ )
+--
+2.34.1
+

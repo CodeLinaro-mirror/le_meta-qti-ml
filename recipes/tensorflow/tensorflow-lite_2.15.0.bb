@@ -21,6 +21,13 @@ SRC_URI = "\
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
          "
 
+# The abseil log/check link fix is only needed with the aospllvm toolchain
+# (default in bsp). Apply it via SRC_URI only for pebble + aospllvm.
+python () {
+    if d.getVar('TOOLCHAIN') == 'aospllvm' and d.getVar('MACHINE') == 'pebble':
+        d.appendVar('SRC_URI', ' file://0003-Fix-undefined-absl-log-check-symbols-with-aospllvm.patch')
+}
+
 SRC_URI:remove:qrb5165-rb5 = "\
          file://0001-remove-abseil-cpp-build.patch \
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
@@ -69,7 +76,6 @@ do_configure:prepend() {
     find ${WORKDIR}/build -name CMakeFiles -exec rm -rf {} +
 }
 
-
 OECMAKE_TARGET_COMPILE += "\
     benchmark_model \
     label_image \
@@ -99,9 +105,9 @@ PACKAGECONFIG ?= "gpu"
 PACKAGECONFIG[gpu] = " -DTFLITE_ENABLE_GPU=ON ,  -DTFLITE_ENABLE_GPU=OFF, adreno vulkan-headers, adreno"
 
 CC_COMPILER = "${@d.getVar('CC').split(' ')[0].split('/')[-1]}"
-LLVM_COMPILER = "${@d.getVar('LLVM_VERSION').split('.')[0]}"
 python () {
-    if d.getVar('CC_COMPILER') == "clang" and int(d.getVar('LLVM_COMPILER')) <= 10:
+    llvm_version = d.getVar('LLVM_VERSION')
+    if llvm_version and d.getVar('CC_COMPILER') == "clang" and int(llvm_version.split('.')[0]) <= 10:
         d.appendVar('EXTRA_OECMAKE', ' -DXNNPACK_ENABLE_ARM_BF16=OFF')
 }
 
