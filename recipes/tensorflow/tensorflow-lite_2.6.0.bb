@@ -47,7 +47,7 @@ SRC_URI = "\
 	file://tensorflow-lite.pc.in \
 	"
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/git"
 
 do_configure[network] = "1"
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite"

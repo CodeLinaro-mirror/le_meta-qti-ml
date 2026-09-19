@@ -46,7 +46,7 @@ SRC_URI:remove:pineapple = "\
          file://0002-Fix-the-compilation-error-of-missing-absl-StrCat-fun.patch \
 "
 
-S = "${WORKDIR}/src"
+S = "${UNPACKDIR}/src"
 
 OECMAKE_SOURCEPATH = "${S}/tensorflow/lite/c"
 

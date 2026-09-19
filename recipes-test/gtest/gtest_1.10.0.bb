@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://googlemock/LICENSE;md5=cbbd27594afd089daa160d3a16dd51
 
 PROVIDES += "gmock"
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/git"
 SRCREV = "${AUTOREV}"
 BRANCH = "googletest/v1.10.x"
 SRC_URI = "\

@@ -12,7 +12,7 @@ BRANCH = "master"
 
 SRC_URI = "git://github.com/google/nsync.git;protocol=https;branch=${BRANCH}"
 
-S  = "${WORKDIR}/git"
+S  = "${UNPACKDIR}/git"
 
 EXTRA_OECMAKE = "\
 	-DBUILD_SHARED_LIBS=ON \

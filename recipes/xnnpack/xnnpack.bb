@@ -15,7 +15,7 @@ SRCREV = "05702cf4099ad019ad1abb8ba656bfe04304f32a"
 SRC_URI = "git://git.codelinaro.org/clo/le/XNNPACK.git;protocol=https;branch=caf_migration/XNNPACK/master"
 SRC_URI += "file://0001-xnnpack-change-MAKE_SYSTEM_PROCESSOR.patch"
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/git"
 
 OECMAKE_SOURCEPATH = "${S}"
 

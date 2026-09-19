@@ -26,7 +26,7 @@ EXTRA_OECMAKE += "\
 
 inherit cmake
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/git"
 
 FILES:${PN}-compiler = "${bindir}"
 

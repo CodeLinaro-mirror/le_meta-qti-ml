@@ -25,7 +25,7 @@ SRC_URI = "git://github.com/ARM-software/android-nn-driver.git;branch=branches/a
 SRC_URI += "file://0001-android-nn-driver-Port-to-LE.patch"
 SRC_URI += "file://0002-android-nn-driver-lower-the-priority-for-ARM-NN-HAL.patch"
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/git"
 
 EXTRA_OECMAKE += " -DSYSROOT_INCDIR=${STAGING_INCDIR}"
 EXTRA_OECMAKE += " -DSYSROOT_LIBDIR=${STAGING_LIBDIR}"
